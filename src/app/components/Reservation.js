@@ -59,9 +59,19 @@ export default function Reservation() {
   };
 
   // --- 4. SEGUNDO PASO: GUARDAR DESPUÉS DE PAGAR ---
-const handlePaymentSuccess = async (paymentDetails) => { // <--- async
-    setShowPayment(false);
-    setStatus("loading");
+// ... código de insert ...
+    const { data, error } = await supabase
+      .from('reservations')
+      .insert([newReservation]);
+
+    if (error) {
+      console.error("Error guardando:", error);
+      // --- AGREGAMOS ESTA LÍNEA PARA VER EL ERROR EN EL CELULAR ---
+      alert("ERROR TÉCNICO: " + error.message + "\nCódigo: " + error.code); 
+      // -----------------------------------------------------------
+      setStatus("idle");
+      return;
+    }
 
     // Preparamos el objeto para Supabase (nombres de columnas en inglés como en la tabla)
     const newReservation = {
