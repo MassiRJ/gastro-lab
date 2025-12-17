@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Clock, Users, ArrowRight, User, Phone, CheckCircle, AlertCircle, Info, Lock } from "lucide-react";
 import PaymentModal from "./PaymentModal"; // <--- 1. IMPORTAMOS EL MODAL
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 
 const MAX_TABLES_PER_SLOT = 3;
 const RESERVATION_FEE = 50.00; // <--- 2. MONTO DE LA GARANTÍA

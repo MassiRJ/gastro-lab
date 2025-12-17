@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar, Trash2, User, Phone, Users, Check, XCircle } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient"; // <--- IMPORTANTE
+import { supabase } from "../../lib/supabaseClient";
 
 export default function ReservationsAdmin() {
   const [reservations, setReservations] = useState([]);
