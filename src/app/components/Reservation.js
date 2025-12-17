@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Clock, Users, ArrowRight, User, Phone, CheckCircle, AlertCircle, Info, Lock } from "lucide-react";
-import PaymentModal from "./PaymentModal"; // <--- 1. IMPORTAMOS EL MODAL
-import { supabase } from "../../lib/supabaseClient";
+import PaymentModal from "./PaymentModal";
+import { supabase } from "../../lib/supabaseClient"; // Importación correcta
 
 const MAX_TABLES_PER_SLOT = 3;
-const RESERVATION_FEE = 50.00; // <--- 2. MONTO DE LA GARANTÍA
+const RESERVATION_FEE = 50.00;
 
 export default function Reservation() {
   const [formData, setFormData] = useState({
@@ -22,58 +22,44 @@ export default function Reservation() {
   const [isFull, setIsFull] = useState(false);
   const [alreadyBooked, setAlreadyBooked] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  
-  // Nuevo estado para controlar el modal de pago
   const [showPayment, setShowPayment] = useState(false); 
 
-  // --- VALIDACIONES (Igual que antes) ---
   useEffect(() => {
-    const allReservations = JSON.parse(localStorage.getItem("restaurant_reservations") || "[]");
-    
-    const existingCount = allReservations.filter(
-      r => r.date === formData.date && r.time === formData.time && r.status !== "cancelada"
-    ).length;
-    setIsFull(existingCount >= MAX_TABLES_PER_SLOT);
+    const checkAvailability = () => {
+      const allReservations = JSON.parse(localStorage.getItem("restaurant_reservations") || "[]");
+      
+      const existingCount = allReservations.filter(
+        r => r.date === formData.date && r.time === formData.time && r.status !== "cancelada"
+      ).length;
+      setIsFull(existingCount >= MAX_TABLES_PER_SLOT);
 
-    if (formData.phone.length > 8) {
-        const userHasBooking = allReservations.some(
-            r => r.date === formData.date && r.time === formData.time && r.phone === formData.phone && r.status !== "cancelada"
-        );
-        setAlreadyBooked(userHasBooking);
-    } else {
-        setAlreadyBooked(false);
-    }
+      if (formData.phone.length > 8) {
+          const userHasBooking = allReservations.some(
+              r => r.date === formData.date && r.time === formData.time && r.phone === formData.phone && r.status !== "cancelada"
+          );
+          setAlreadyBooked(userHasBooking);
+      } else {
+          setAlreadyBooked(false);
+      }
+    };
+    checkAvailability();
   }, [formData.date, formData.time, formData.phone, refresh]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // --- 3. PRIMER PASO: VALIDAR Y ABRIR MODAL DE PAGO ---
   const handlePreSubmit = (e) => {
     e.preventDefault();
     if (isFull || alreadyBooked) return;
-    
-    // En lugar de guardar, abrimos el modal para cobrar
     setShowPayment(true);
   };
 
-  // --- 4. SEGUNDO PASO: GUARDAR DESPUÉS DE PAGAR ---
-// ... código de insert ...
-    const { data, error } = await supabase
-      .from('reservations')
-      .insert([newReservation]);
+  // --- AQUÍ ESTABA EL ERROR: AGREGAMOS 'async' ---
+  const handlePaymentSuccess = async (paymentDetails) => {
+    setShowPayment(false);
+    setStatus("loading");
 
-    if (error) {
-      console.error("Error guardando:", error);
-      // --- AGREGAMOS ESTA LÍNEA PARA VER EL ERROR EN EL CELULAR ---
-      alert("ERROR TÉCNICO: " + error.message + "\nCódigo: " + error.code); 
-      // -----------------------------------------------------------
-      setStatus("idle");
-      return;
-    }
-
-    // Preparamos el objeto para Supabase (nombres de columnas en inglés como en la tabla)
     const newReservation = {
       date: formData.date,
       time: formData.time,
@@ -86,18 +72,22 @@ export default function Reservation() {
       payment_status: "PAGADO"
     };
 
-    // --- GUARDAR EN SUPABASE ---
+    // Guardar en Supabase
     const { data, error } = await supabase
       .from('reservations')
       .insert([newReservation]);
 
     if (error) {
-      console.error("Error guardando:", error);
-      alert("Hubo un error al guardar tu reserva. Contáctanos.");
+      console.error("Error Supabase:", error);
+      alert("ERROR: " + error.message); // Alerta para depurar en celular
       setStatus("idle");
       return;
     }
-    // ---------------------------
+
+    // Guardar también en LocalStorage (para compatibilidad hibrida si la usas)
+    const existingReservations = JSON.parse(localStorage.getItem("restaurant_reservations") || "[]");
+    existingReservations.push({ ...newReservation, id: Date.now() });
+    localStorage.setItem("restaurant_reservations", JSON.stringify(existingReservations));
 
     setStatus("success");
     setRefresh(prev => prev + 1);
@@ -111,11 +101,10 @@ export default function Reservation() {
   return (
     <section id="reservas" className="relative py-20 bg-black overflow-hidden scroll-mt-28">
       
-      {/* MODAL DE PAGO DE GARANTÍA */}
       <PaymentModal 
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
-        total={RESERVATION_FEE} // Cobramos 50 soles
+        total={RESERVATION_FEE} 
         onPaymentSuccess={handlePaymentSuccess}
         allowCash={false}
       />
@@ -138,14 +127,11 @@ export default function Reservation() {
             <div className="absolute bottom-8 left-8 z-20">
               <h3 className="text-3xl font-bold text-white mb-2">Reserva con Garantía</h3>
               <p className="text-gray-300 text-sm mb-4 max-w-md">
-                Para asegurar la calidad de nuestro servicio, solicitamos un depósito de garantía que será descontado de su consumo final.
+                Para asegurar la calidad de nuestro servicio, solicitamos un depósito de garantía.
               </p>
               <div className="flex gap-2 text-yellow-500 text-xs font-bold uppercase tracking-wider">
                 <span className="bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/30 flex items-center gap-1">
                   <Lock size={12}/> Pago Seguro
-                </span>
-                <span className="bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/30">
-                  Yape / Plin / Tarjetas
                 </span>
               </div>
             </div>
@@ -163,7 +149,7 @@ export default function Reservation() {
                   <CheckCircle size={40} className="text-black" />
                 </div>
                 <h3 className="text-3xl font-bold text-white mb-4">¡Reserva Asegurada!</h3>
-                <p className="text-gray-400">Hemos recibido tu garantía de S/ {RESERVATION_FEE.toFixed(2)}.</p>
+                <p className="text-gray-400">Hemos recibido tu garantía.</p>
                 <p className="text-gray-500 text-sm mt-4">Te esperamos el {formData.date} a las {formData.time}.</p>
               </div>
             ) : (
