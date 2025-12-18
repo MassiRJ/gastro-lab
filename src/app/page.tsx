@@ -52,6 +52,12 @@ export default function Home() {
     setCart(cart.filter((_, index) => index !== indexToRemove));
   };
 
+  // --- AGREGA ESTA FUNCIÓN NUEVA ---
+  const clearCart = () => {
+    setCart([]); // Vacia el estado
+    localStorage.removeItem("gastro_cart"); // Borra la memoria del navegador
+  };
+
   return (
     <main className="bg-black min-h-screen">
       {/* Notificación Flotante */}
@@ -83,6 +89,14 @@ export default function Home() {
       <Testimonials />
       <Reservation />
       <Footer />
+      {/* --- AQUÍ CONECTAMOS LA FUNCIÓN --- */}
+      <CartSidebar 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        cartItems={cart} 
+        onRemoveItem={removeFromCart}
+        onClearCart={clearCart} // <--- ¡ESTO ES LO QUE FALTA!
+      />
     </main>
   );
 }
