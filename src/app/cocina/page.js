@@ -1,21 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; // Importamos Loader2
+import { useState, useEffect } from "react";
+import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; 
 import { supabase } from "../../lib/supabaseClient";
 
 export default function KitchenDisplay() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState([]);
-  const [processingId, setProcessingId] = useState(null); // Para saber qué botón está cargando
+  
+  // DOS ESTADOS DIFERENTES:
+  const [dbOrders, setDbOrders] = useState([]); // Lo que viene de internet
+  const [hiddenIds, setHiddenIds] = useState([]); // Lo que tú has borrado manualmente
   
   // LOGIN
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // 🛡️ LISTA NEGRA: Guardamos los IDs como TEXTO (Strings)
-  const deletedIdsRef = useRef(new Set()); 
 
   useEffect(() => {
     const initSession = async () => {
@@ -26,7 +25,6 @@ export default function KitchenDisplay() {
     };
     initSession();
 
-    // Auto-refresco cada 5 segundos
     const interval = setInterval(() => { if (session) fetchOrders(); }, 5000);
     return () => clearInterval(interval);
   }, [session]);
@@ -38,48 +36,43 @@ export default function KitchenDisplay() {
   };
 
   const fetchOrders = async () => {
+    // 1. Traemos TODO de la base de datos sin filtrar nada aquí
     const { data } = await supabase
       .from("orders")
       .select("*")
       .order("created_at", { ascending: true });
     
     if (data) {
-      // FILTRO ANTI-ZOMBIE (A PRUEBA DE FALLOS):
-      // Convertimos todo a String() para asegurar que la comparación funcione siempre
-      const cleanOrders = data.filter(o => 
-        o.status === 'pendiente' && !deletedIdsRef.current.has(String(o.id))
-      );
-      setOrders(cleanOrders);
+      setDbOrders(data);
     }
   };
 
   const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
     
-    // 1. Convertimos ID a String para evitar errores 10 vs "10"
-    const idString = String(id);
+    // PASO 1: VISUAL (INSTANTÁNEO)
+    // Agregamos este ID a la lista de "Ocultos". 
+    // Esto es sagrado: si está aquí, NO SE MUESTRA, diga lo que diga la base de datos.
+    setHiddenIds(prev => [...prev, id]);
 
-    // 2. Bloqueamos el botón visualmente para que sepas que el click entró
-    setProcessingId(id);
-
-    // 3. Agregamos a la lista negra
-    deletedIdsRef.current.add(idString);
-
-    // 4. Lo borramos de la pantalla AL INSTANTE
-    setOrders(prevOrders => prevOrders.filter((o) => String(o.id) !== idString));
-
-    // 5. Enviamos la orden destructora al servidor
+    // PASO 2: BASE DE DATOS (SEGUNDO PLANO)
+    // Usamos RPC (eliminar_pedido) o delete normal. 
+    // Como ya lo ocultamos visualmente, no nos importa si esto tarda 1 segundo o 10.
     const { error } = await supabase.rpc('eliminar_pedido', { pedido_id: id });
       
     if (error) {
-      console.error("Error al borrar:", error);
-      // Si falla, lo sacamos de la lista negra
-      deletedIdsRef.current.delete(idString);
-      setProcessingId(null);
-    } else {
-      setProcessingId(null);
+      console.error("Error borrando en servidor:", error);
+      // Opcional: Si falla real, podríamos quitarlo de hiddenIds, 
+      // pero mejor dejarlo oculto para no estresar al chef.
     }
   };
+
+  // --- FILTRO MAESTRO ---
+  // Aquí ocurre la magia. Combinamos la DB con tu acción local.
+  const visibleOrders = dbOrders.filter(order => {
+    // Es pendiente Y NO está en la lista de ocultos
+    return order.status === 'pendiente' && !hiddenIds.includes(order.id);
+  });
 
   const Background = () => (
     <div className="fixed inset-0 -z-10 bg-gradient-to-br from-orange-900 via-red-900 to-rose-900 opacity-90"></div>
@@ -107,18 +100,18 @@ export default function KitchenDisplay() {
           <Utensils className="text-orange-500" /> KDS - Cocina
         </h1>
         <div className="bg-orange-600 px-4 py-1 rounded-full font-bold animate-pulse">
-          {orders.length} Pendientes
+          {visibleOrders.length} Pendientes
         </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {orders.length === 0 ? (
+        {visibleOrders.length === 0 ? (
           <div className="col-span-full text-center py-20 text-white/50">
             <CheckCircle size={60} className="mx-auto mb-4 text-green-500" />
             <h2 className="text-2xl">Todo despachado</h2>
           </div>
         ) : (
-          orders.map((order) => (
+          visibleOrders.map((order) => (
             <div key={order.id} className="bg-zinc-900 border-l-4 border-orange-500 rounded-r-xl shadow-xl overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
               
               <div className="bg-zinc-800 p-3 flex justify-between items-start border-b border-zinc-700">
@@ -149,16 +142,9 @@ export default function KitchenDisplay() {
               <div className="p-3 bg-zinc-800 border-t border-zinc-700">
                 <button 
                   onClick={(e) => markAsReady(order.id, e)}
-                  disabled={processingId === order.id} // 🚫 EVITA DOBLE CLICK
-                  className={`w-full font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg 
-                    ${processingId === order.id ? 'bg-zinc-700 cursor-not-allowed opacity-50' : 'bg-green-600 hover:bg-green-500 active:scale-95 text-white'}
-                  `}
+                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform"
                 >
-                  {processingId === order.id ? (
-                    <><Loader2 className="animate-spin" /> PROCESANDO...</>
-                  ) : (
-                    <><CheckCircle size={20} /> PEDIDO LISTO</>
-                  )}
+                  <CheckCircle size={20} /> PEDIDO LISTO
                 </button>
               </div>
             </div>
