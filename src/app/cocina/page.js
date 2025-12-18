@@ -68,23 +68,16 @@ export default function KitchenDisplay() {
 
   // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
   const markAsReady = async (id) => {
-    // Confirmación visual rápida
-    if(!confirm("¿Confirmar que el pedido salió? Se borrará de la lista.")) return;
-
-    console.log("Intentando BORRAR pedido ID:", id);
-
-    // USAMOS .delete() EN LUGAR DE .update()
-    // Esto es mucho más efectivo si tienes problemas de permisos/red con el Update
+    // SIN PREGUNTAR, BORRAMOS DIRECTO
     const { error } = await supabase
       .from('orders')
       .delete()
       .eq('id', id);
       
     if (error) {
-      alert("❌ Error al borrar: " + error.message);
-      console.error(error);
+      console.error(error); // Si falla, solo lo vemos en consola
     } else {
-      // Éxito: Lo sacamos de la pantalla
+      // Lo sacamos de la pantalla al instante
       setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
     }
   };
