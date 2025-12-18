@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Trash2, CreditCard, ShoppingBag, Banknote, QrCode, CheckCircle, MapPin, Receipt } from "lucide-react";
-import { useState, useMemo } from "react"; // Agregamos useMemo
+import { useState, useMemo } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClearCart }) {
@@ -9,23 +9,20 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [tableNumber, setTableNumber] = useState(""); 
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
+  
+  // ESTADO NUEVO: Para "recordar" el total cuando borremos el carrito
+  const [lastOrderTotal, setLastOrderTotal] = useState(0);
 
-  // --- CORRECCIÓN MATEMÁTICA "A PRUEBA DE TODO" ---
-  const total = useMemo(() => {
+  // --- CÁLCULO DEL TOTAL EN VIVO ---
+  const currentTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => {
-      // 1. Convertimos a string por si acaso
       let priceString = String(item.price);
-      
-      // 2. Quitamos todo lo que NO sea número o punto (ej: "S/ 25.00" -> "25.00")
       let cleanPrice = priceString.replace(/[^0-9.]/g, '');
-      
-      // 3. Convertimos a número real
       const numberPrice = parseFloat(cleanPrice) || 0;
-      
       return sum + numberPrice;
     }, 0);
   }, [cartItems]);
-  // ------------------------------------------------
+  // --------------------------------
 
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
@@ -36,11 +33,15 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
 
     setIsProcessing(true);
 
+    // 1. Guardamos el total en una variable fija ANTES de borrar nada
+    const totalToSave = currentTotal;
+    setLastOrderTotal(totalToSave); 
+
     const newOrder = {
       table_number: tableNumber,
       customer_name: "Cliente Mesa",
       items: cartItems,
-      total_price: total, // Guardamos el número limpio
+      total_price: totalToSave, // Usamos la variable fija
       status: 'pendiente',
       payment_method: paymentMethod
     };
@@ -53,6 +54,8 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
     } else {
       setOrderSuccess(true);
       setIsProcessing(false);
+      
+      // Aquí borramos el carrito, PERO ya tenemos el 'lastOrderTotal' guardado
       if (onClearCart) onClearCart(); 
     }
   };
@@ -60,6 +63,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
   const closeSidebarTotal = () => {
     setOrderSuccess(false);
     setTableNumber("");
+    setLastOrderTotal(0); // Reiniciamos para la próxima
     onClose();
   };
 
@@ -84,7 +88,8 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
             
             <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
               <span className="text-gray-400 flex items-center gap-2"><Receipt size={16}/> Total</span>
-              <span className="text-yellow-500 font-bold text-2xl">S/ {total.toFixed(2)}</span>
+              {/* AQUÍ ESTÁ EL ARREGLO: Usamos lastOrderTotal en vez de currentTotal */}
+              <span className="text-yellow-500 font-bold text-2xl">S/ {lastOrderTotal.toFixed(2)}</span>
             </div>
 
             <div className="flex justify-between items-center">
@@ -127,7 +132,6 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
                 <div key={index} className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors">
                   <div>
                     <h4 className="font-bold text-white">{item.title}</h4>
-                    {/* Mostramos el precio tal cual viene, por estética */}
                     <p className="text-yellow-500 text-sm font-bold">
                         {typeof item.price === 'number' ? `S/ ${item.price.toFixed(2)}` : item.price}
                     </p>
@@ -143,7 +147,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
             )}
           </div>
 
-          {/* FOOTER FIJO (TOTAL Y PAGO) */}
+          {/* FOOTER FIJO */}
           {cartItems.length > 0 && (
             <div className="p-6 bg-zinc-950 border-t border-zinc-800 space-y-5 flex-none z-10">
               
@@ -185,11 +189,11 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
                 </button>
               </div>
 
-              {/* TOTAL GRANDE */}
+              {/* TOTAL Y PAGAR */}
               <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800 mt-2">
                 <div className="flex justify-between items-end mb-4">
                   <span className="text-gray-400 font-medium">Total a Pagar</span>
-                  <span className="text-4xl font-extrabold text-white tracking-tight">S/ {total.toFixed(2)}</span>
+                  <span className="text-4xl font-extrabold text-white tracking-tight">S/ {currentTotal.toFixed(2)}</span>
                 </div>
 
                 <button 
