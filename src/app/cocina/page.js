@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Clock, CheckCircle, Utensils, Flame, MapPin } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -9,9 +9,12 @@ export default function KitchenDisplay() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   
-  // Login
+  // LOGIN
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // 🛡️ LISTA NEGRA: Aquí guardamos los IDs que estamos borrando para que no revivan
+  const deletedIdsRef = useRef(new Set()); 
 
   useEffect(() => {
     const initSession = async () => {
@@ -22,63 +25,50 @@ export default function KitchenDisplay() {
     };
     initSession();
 
-    // Auto-refresco cada 5 seg
+    // Auto-refresco cada 5 segundos
     const interval = setInterval(() => { if (session) fetchOrders(); }, 5000);
     return () => clearInterval(interval);
   }, [session]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    console.log("Intentando iniciar sesión..."); // Chivato en consola
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        // SI HAY ERROR, QUE NOS AVISE
-        alert("❌ Error al entrar: " + error.message);
-        console.error("Error Supabase:", error);
-        setLoginError(error.message); // Si usas el estado de error visual
-      } else {
-        // SI TODO VA BIEN
-        console.log("Login exitoso:", data);
-        setSession(data.session);
-        fetchOrders();
-      }
-    } catch (err) {
-      // SI CRASHEA EL CÓDIGO
-      alert("🔥 Error Crítico: " + err.message);
-      console.error(err);
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) { setSession(data.session); fetchOrders(); }
   };
 
   const fetchOrders = async () => {
-    // Traemos pedidos pendientes de la tabla ORDERS
     const { data } = await supabase
       .from("orders")
       .select("*")
-      .eq('status', 'pendiente') 
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true }); // Traemos todos para filtrar aqui
     
-    if (data) setOrders(data);
+    if (data) {
+      // FILTRO ANTI-ZOMBIE: 
+      // Solo mostramos los pendientes QUE NO esten en la lista de borrados
+      const cleanOrders = data.filter(o => 
+        o.status === 'pendiente' && !deletedIdsRef.current.has(o.id)
+      );
+      setOrders(cleanOrders);
+    }
   };
 
-  // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
-  const markAsReady = async (id) => {
-    // 1. Lo borramos de la pantalla INMEDIATAMENTE (para que se sienta instantáneo)
+  const markAsReady = async (id, e) => {
+    // 1. Evitamos que el click atraviese el botón (propagación)
+    if(e) e.stopPropagation();
+
+    // 2. Lo agregamos a la LISTA NEGRA inmediatamente
+    deletedIdsRef.current.add(id);
+
+    // 3. Lo borramos visualmente YA (Feedback instantáneo)
     setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
 
-    // 2. Enviamos la orden a la base de datos en segundo plano
-    const { error } = await supabase.rpc('eliminar_pedido', { 
-      pedido_id: id 
-    });
+    // 4. Mandamos la orden de borrar a la Base de Datos
+    const { error } = await supabase.rpc('eliminar_pedido', { pedido_id: id });
       
     if (error) {
-      console.error("Error al borrar:", error);
-      // Si falla algo en la nube, solo saldrá en la consola (F12) para no molestar
+      console.error("Error al borrar en DB:", error);
+      // Si falló real, lo sacamos de la lista negra para que vuelva a aparecer
+      deletedIdsRef.current.delete(id);
     }
   };
 
@@ -86,7 +76,6 @@ export default function KitchenDisplay() {
     <div className="fixed inset-0 -z-10 bg-gradient-to-br from-orange-900 via-red-900 to-rose-900 opacity-90"></div>
   );
 
-  // --- LOGIN SIMPLE ---
   if (!session && !loading) {
      return (
        <div className="min-h-screen flex items-center justify-center p-4 bg-black">
@@ -100,7 +89,6 @@ export default function KitchenDisplay() {
      );
   }
 
-  // --- DASHBOARD COCINA ---
   return (
     <div className="min-h-screen p-6 text-white relative">
       <Background />
@@ -124,7 +112,6 @@ export default function KitchenDisplay() {
           orders.map((order) => (
             <div key={order.id} className="bg-zinc-900 border-l-4 border-orange-500 rounded-r-xl shadow-xl overflow-hidden flex flex-col h-full animate-in fade-in zoom-in duration-300">
               
-              {/* Encabezado del Ticket */}
               <div className="bg-zinc-800 p-3 flex justify-between items-start border-b border-zinc-700">
                 <div>
                   <h3 className="font-bold text-xl text-white flex items-center gap-2">
@@ -136,11 +123,9 @@ export default function KitchenDisplay() {
                   <p className="text-orange-400 font-mono font-bold text-lg">
                     {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </p>
-                  <p className="text-xs text-gray-500">hace {Math.floor((new Date() - new Date(order.created_at))/60000)} min</p>
                 </div>
               </div>
 
-              {/* Lista de Platos (JSON) */}
               <div className="p-4 flex-1 bg-zinc-900/50">
                 <ul className="space-y-3">
                   {order.items && order.items.map((item, i) => (
@@ -152,13 +137,12 @@ export default function KitchenDisplay() {
                 </ul>
               </div>
 
-              {/* Pie del Ticket */}
               <div className="p-3 bg-zinc-800 border-t border-zinc-700">
                 <button 
-                  onClick={() => markAsReady(order.id)}
-                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors"
+                  onClick={(e) => markAsReady(order.id, e)} // Pasamos el evento 'e'
+                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg"
                 >
-                  <CheckCircle size={18} /> PEDIDO LISTO
+                  <CheckCircle size={20} /> PEDIDO LISTO
                 </button>
               </div>
             </div>
