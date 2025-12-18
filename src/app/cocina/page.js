@@ -68,21 +68,22 @@ export default function KitchenDisplay() {
 
   // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
   const markAsReady = async (id) => {
-    console.log("Intentando marcar ID:", id); // Para ver en consola si llega el ID
+    console.log("Intentando finalizar pedido ID:", id); // Muestra el ID en la consola
 
-    // USAMOS RPC EN LUGAR DE UPDATE DIRECTO
-    const { error } = await supabase.rpc('marcar_pedido_listo', { 
-      pedido_id: id 
-    });
+    // Método Clásico UPDATE (Ahora sí funcionará porque RLS está desactivado)
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'listo' }) 
+      .eq('id', id); // Busca el pedido por su ID exacto
       
     if (error) {
-      alert("❌ Error RPC: " + error.message);
+      alert("❌ Error: " + error.message);
       console.error(error);
     } else {
-      // Si funciona, actualizamos la vista
-      console.log("¡Pedido marcado con éxito!");
+      // Si funciona, lo quitamos de la pantalla visualmente
       setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
-      fetchOrders(); 
+      // Opcional: Sonido de éxito o log
+      console.log("Pedido finalizado correctamente");
     }
   };
 
