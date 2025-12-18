@@ -52,7 +52,6 @@ export default function KitchenDisplay() {
     const { data } = await supabase
       .from("reservations")
       .select("*")
-      .eq('status', 'confirmada') 
       .order("time", { ascending: true });
     
     // Solo actualizamos si hay datos para evitar parpadeos innecesarios
