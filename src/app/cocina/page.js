@@ -7,6 +7,7 @@ import { supabase } from "../../lib/supabaseClient";
 export default function KitchenDisplay() {
   const [session, setSession] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   // LOGIN
   const [email, setEmail] = useState("");
@@ -19,11 +20,12 @@ export default function KitchenDisplay() {
     const initSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
+      setLoading(false);
       if (session) fetchOrders();
     };
     initSession();
 
-    // Refresco automático
+    // Refresco automático cada 5 seg
     const interval = setInterval(() => { if (session) fetchOrders(); }, 5000);
     return () => clearInterval(interval);
   }, [session]);
@@ -39,7 +41,7 @@ export default function KitchenDisplay() {
     const { data } = await supabase
       .from("orders")
       .select("*")
-      .eq('status', 'pendiente') // <--- CLAVE: Solo lo que falta cocinar
+      .eq('status', 'pendiente') 
       .order("created_at", { ascending: true });
     
     if (data) setOrders(data);
@@ -48,25 +50,30 @@ export default function KitchenDisplay() {
   const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
     
-    // 1. VISUAL: Lo ocultamos YA
+    // 1. VISUAL: Lo ocultamos YA para que se sienta rápido
     setHiddenIds(prev => [...prev, id]);
 
-    // 2. BASE DE DATOS: NO BORRAMOS, solo marcamos como LISTO
-    // Así la caja podrá ver el dinero después.
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: 'listo' })
-      .eq('id', id);
+    // 2. BASE DE DATOS: Usamos la función RPC blindada
+    // Esto ejecuta la función SQL que creamos en el Paso 1
+    const { error } = await supabase.rpc('marcar_listo', { 
+      pedido_id: id 
+    });
       
-    if (error) console.error("Error al actualizar:", error);
+    if (error) {
+      console.error("❌ Error CRÍTICO al actualizar en DB:", error);
+      alert("Error: No se guardó en la base de datos. " + error.message);
+      // Si falló, lo volvemos a mostrar para que sepas que no se guardó
+      setHiddenIds(prev => prev.filter(hid => hid !== id));
+    } else {
+      console.log("✅ Pedido actualizado correctamente en la nube");
+    }
   };
 
-  // Filtro Maestro
+  // Filtro Maestro: Oculta los que ya marcaste localmente
   const visibleOrders = orders.filter(order => !hiddenIds.includes(order.id));
 
-  // ... (El resto del diseño Login y Background es igual, solo cambia el return del map)
-
-  if (!session) {
+  // --- LOGIN ---
+  if (!session && !loading) {
      return (
        <div className="min-h-screen flex items-center justify-center p-4 bg-black">
          <form onSubmit={handleLogin} className="bg-zinc-900 p-8 rounded-2xl w-full max-w-sm space-y-4 border border-zinc-800">
@@ -79,6 +86,7 @@ export default function KitchenDisplay() {
      );
   }
 
+  // --- VISTA COCINA ---
   return (
     <div className="min-h-screen p-6 text-white relative bg-zinc-950">
       <header className="flex justify-between items-center mb-8 bg-black/40 p-4 rounded-2xl border border-white/10">
@@ -91,24 +99,41 @@ export default function KitchenDisplay() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {visibleOrders.map((order) => (
+        {visibleOrders.length === 0 ? (
+           <div className="col-span-full text-center py-20 text-white/50">
+             <CheckCircle size={60} className="mx-auto mb-4 text-green-500" />
+             <h2 className="text-2xl">Todo al día, Chef.</h2>
+           </div>
+        ) : (
+          visibleOrders.map((order) => (
             <div key={order.id} className="bg-zinc-900 border-l-4 border-orange-500 rounded-r-xl shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
               <div className="bg-zinc-800 p-3 flex justify-between items-center border-b border-zinc-700">
                   <h3 className="font-bold text-xl text-white flex items-center gap-2"><MapPin size={18} className="text-yellow-500"/> {order.table_number}</h3>
-                  <span className="text-xs text-gray-400">#{order.id}</span>
+                  <div className="text-right">
+                    <span className="text-xs text-gray-400 block">#{order.id}</span>
+                    <span className="text-xs text-orange-400 font-mono">
+                      {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
+                  </div>
               </div>
               <div className="p-4 flex-1 bg-zinc-900/50">
                 <ul className="space-y-2">
                   {order.items && order.items.map((item, i) => (
-                    <li key={i} className="flex gap-2 border-b border-zinc-800 pb-1"><span className="text-orange-500 font-bold">1x</span> {item.title}</li>
+                    <li key={i} className="flex gap-2 border-b border-zinc-800 pb-1 text-sm md:text-base">
+                      <span className="text-orange-500 font-bold">1x</span> {item.title}
+                    </li>
                   ))}
                 </ul>
               </div>
-              <button onClick={(e) => markAsReady(order.id, e)} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 flex justify-center gap-2 active:scale-95 transition-transform">
+              <button 
+                onClick={(e) => markAsReady(order.id, e)} 
+                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 flex justify-center gap-2 active:scale-95 transition-transform"
+              >
                   <CheckCircle size={20} /> PEDIDO LISTO
               </button>
             </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
