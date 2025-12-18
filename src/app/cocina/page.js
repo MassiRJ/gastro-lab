@@ -1,145 +1,149 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, CheckCircle, CreditCard, DollarSign, RefreshCw } from "lucide-react";
+import { Clock, Users, CheckCircle, Utensils, Lock, Flame } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 
-export default function Kitchen() {
+export default function KitchenDisplay() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [lastUpdate, setLastUpdate] = useState(new Date()); // Para efecto visual
+  
+  // Login States
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState(null);
 
-  // --- LÓGICA DE AUTO-REFRESCO (POLLING) ---
   useEffect(() => {
-    // Función que lee la memoria
-    const fetchOrders = () => {
-      const savedOrders = JSON.parse(localStorage.getItem("kitchen_orders") || "[]");
-      
-      // Actualizamos solo si hay cambios (para evitar parpadeos innecesarios)
-      // En un proyecto real haríamos una comparación más profunda, 
-      // pero aquí React se encarga de optimizar si el array es igual.
-      setOrders(savedOrders);
-      setLastUpdate(new Date());
-    };
-
-    // 1. Carga inicial inmediata
-    fetchOrders();
-
-    // 2. Programar la actualización cada 2 segundos (2000 ms)
-    const interval = setInterval(fetchOrders, 2000);
-
-    // 3. Limpieza (Importante para no dejar procesos corriendo)
-    return () => clearInterval(interval);
+    checkSession();
   }, []);
 
-  const completeOrder = (id) => {
-    const updatedOrders = orders.filter(order => order.id !== id);
-    setOrders(updatedOrders);
-    localStorage.setItem("kitchen_orders", JSON.stringify(updatedOrders));
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setSession(session);
+    setLoading(false);
+    if (session) fetchOrders();
   };
 
-  return (
-    <main className="min-h-screen bg-zinc-950 p-8 text-white">
-      {/* Header de la Cocina */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-12 gap-4">
-        <div>
-          <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-            👨‍🍳 KDS <span className="text-yellow-500">Cocina</span>
-            {/* Indicador visual de "En vivo" */}
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-          </h1>
-          <p className="text-gray-400 text-sm flex items-center gap-2 mt-1">
-            <RefreshCw size={12} className="animate-spin" /> Sincronizando en tiempo real...
-          </p>
-        </div>
-        
-        <div className="bg-zinc-900 border border-zinc-800 px-6 py-3 rounded-xl flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase font-bold">Pendientes</p>
-            <p className="text-3xl font-bold text-yellow-500">{orders.length}</p>
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoginError("Acceso denegado.");
+    else { setSession(data.session); fetchOrders(); }
+  };
+
+  const fetchOrders = async () => {
+    // Solo traemos las confirmadas, no las canceladas ni las ya servidas
+    const { data } = await supabase
+      .from("reservations")
+      .select("*")
+      .eq('status', 'confirmada') 
+      .order("time", { ascending: true });
+    if (data) setOrders(data);
+  };
+
+  const markAsServed = async (id) => {
+    // Marcamos como "atendida" para que desaparezca de la cocina pero quede en la base de datos
+    const { error } = await supabase
+      .from("reservations")
+      .update({ status: 'atendida' })
+      .eq('id', id);
+      
+    if (!error) {
+      // Efecto visual de eliminar
+      setOrders(orders.filter((order) => order.id !== id));
+    }
+  };
+
+  const Background = () => (
+    <div className="fixed inset-0 -z-10 bg-gradient-to-br from-orange-900 via-red-900 to-rose-900">
+      <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
+    </div>
+  );
+
+  if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Cargando Cocina...</div>;
+
+  // --- LOGIN COCINA ---
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+        <Background />
+        <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-8 rounded-3xl shadow-2xl w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-tr from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform -rotate-3">
+              <Flame className="text-white" size={40} />
+            </div>
+            <h1 className="text-3xl font-bold text-white">Modo Cocina</h1>
+            <p className="text-orange-200 text-sm mt-2">Kitchen Display System</p>
           </div>
-          <div className="h-10 w-px bg-zinc-700"></div>
-          <Clock className="text-gray-500" />
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/40 focus:border-orange-500 outline-none" placeholder="Chef Access" />
+            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/40 focus:border-orange-500 outline-none" placeholder="******" />
+            {loginError && <p className="text-red-300 text-center">{loginError}</p>}
+            <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-orange-500/30">Entrar a Cocina</button>
+          </form>
         </div>
       </div>
+    );
+  }
 
-      {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-500 opacity-50 animate-pulse">
-          <CheckCircle size={64} className="mb-4 text-zinc-700" />
-          <p className="text-2xl font-bold">Todo despachado, Chef.</p>
-          <p>Esperando nuevos pedidos...</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {orders.map((order) => (
-            <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
-              {/* CABECERA DEL TICKET */}
-              <div className={`p-4 flex justify-between items-start border-b border-zinc-700 ${
-                  order.paymentStatus === "PENDIENTE" ? "bg-orange-900/20" : "bg-zinc-800"
-                }`}>
+  // --- DASHBOARD COCINA ---
+  return (
+    <div className="min-h-screen p-6 relative overflow-hidden text-white">
+      <Background />
+      <div className="max-w-7xl mx-auto relative z-10">
+        <header className="flex justify-between items-center mb-10 backdrop-blur-md bg-black/20 p-6 rounded-3xl border border-white/10">
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            <Utensils className="text-orange-400" /> Comandas Pendientes
+          </h1>
+          <div className="bg-orange-500/20 px-6 py-2 rounded-full border border-orange-500/50">
+            <span className="font-bold text-orange-200">{orders.length} en cola</span>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {orders.length === 0 ? (
+            <div className="col-span-full text-center py-40 opacity-50">
+              <CheckCircle size={80} className="mx-auto mb-4 text-green-400" />
+              <h2 className="text-3xl font-bold">¡Todo limpio, Chef!</h2>
+            </div>
+          ) : (
+            orders.map((order) => (
+              <div key={order.id} className="backdrop-blur-xl bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col justify-between h-full hover:border-orange-500/50 transition-all duration-300 group">
                 <div>
-                  <h3 className="font-bold text-xl text-white">
-                    {order.type === "mesa" ? `Mesa ${order.table}` : "🛵 DELIVERY"}
-                  </h3>
-                  <span className="text-xs font-mono text-gray-400">#{order.id.toString().slice(-4)}</span>
-                </div>
-                <div className="text-right">
-                  <span className="block text-xl font-bold text-yellow-500">{order.time}</span>
-                </div>
-              </div>
-
-              {/* LISTA DE PLATOS */}
-              <div className="p-5 flex-1 space-y-4 bg-zinc-900/50">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex items-start gap-3 border-b border-zinc-800 pb-3 last:border-0 last:pb-0">
-                    <div className="w-6 h-6 bg-yellow-500/10 text-yellow-500 rounded flex items-center justify-center text-xs font-bold mt-1">
-                      1
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                      <p className="text-3xl font-bold text-white flex items-center gap-2">
+                        <Clock size={20} className="text-orange-400" /> {order.time}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-gray-200 font-medium">{item.title}</p>
+                    <div className="bg-white/10 px-3 py-1 rounded-lg">
+                      <p className="text-xs uppercase tracking-wider text-white/60">{order.date}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {/* INFO DE PAGO Y ACCIÓN */}
-              <div className="bg-zinc-950 p-4 border-t border-zinc-800 space-y-3">
-                
-                <div className="flex justify-between items-center">
-                   <div className="flex items-center gap-2">
-                      <span className="text-gray-400 text-sm">Total:</span>
-                      <span className="text-white font-bold">S/ {order.total.toFixed(2)}</span>
-                   </div>
-                   
-                   {/* ET IQUETAS DE ESTADO */}
-                   {order.paymentStatus === "PAGADO" && (
-                     <div className="flex items-center gap-1 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">
-                       <CreditCard size={12} /> PAGADO
-                     </div>
-                   )}
-
-                   {order.paymentStatus === "PENDIENTE" && (
-                     <div className="flex items-center gap-1 bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-xs font-bold border border-orange-500/30 animate-pulse">
-                       <DollarSign size={12} /> COBRAR
-                     </div>
-                   )}
+                  
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-bold mb-2 truncate">{order.name}</h3>
+                    <div className="flex items-center gap-2 text-xl text-orange-200 bg-orange-500/10 p-3 rounded-xl border border-orange-500/20">
+                      <Users size={24} /> 
+                      <span className="font-bold">{order.people} Personas</span>
+                    </div>
+                    <p className="mt-4 text-white/50 text-sm italic">Nota: Sin alergias registradas</p>
+                  </div>
                 </div>
 
                 <button 
-                  onClick={() => completeOrder(order.id)}
-                  className="w-full py-3 bg-zinc-800 hover:bg-green-600 hover:text-white text-gray-300 font-bold rounded-lg transition-all flex justify-center items-center gap-2 group"
+                  onClick={() => markAsServed(order.id)}
+                  className="w-full bg-green-500/20 hover:bg-green-500 hover:text-black text-green-300 border border-green-500/50 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group-hover:shadow-[0_0_30px_rgba(34,197,94,0.3)]"
                 >
-                  <CheckCircle size={18} className="group-hover:scale-110 transition-transform"/> 
+                  <CheckCircle size={24} />
                   MARCAR LISTO
                 </button>
               </div>
-
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      )}
-    </main>
+      </div>
+    </div>
   );
 }
