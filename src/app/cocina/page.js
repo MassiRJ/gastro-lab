@@ -49,23 +49,22 @@ export default function KitchenDisplay() {
 
   const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
-    
-    // 1. VISUAL: Lo ocultamos YA para que se sienta rápido
+
+    // 1. VISUAL: Lo ocultamos YA (para que sea rápido)
     setHiddenIds(prev => [...prev, id]);
 
-    // 2. BASE DE DATOS: Usamos la función RPC blindada
-    // Esto ejecuta la función SQL que creamos en el Paso 1
-    const { error } = await supabase.rpc('marcar_listo', { 
-      pedido_id: id 
-    });
+    // 2. BASE DE DATOS: Método Estándar UPDATE
+    // (Ahora funcionará porque quitamos el header raro en el Paso 1)
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'listo' }) // Cambiamos estado
+      .eq('id', id);               // Donde el ID sea este
       
     if (error) {
-      console.error("❌ Error CRÍTICO al actualizar en DB:", error);
-      alert("Error: No se guardó en la base de datos. " + error.message);
-      // Si falló, lo volvemos a mostrar para que sepas que no se guardó
+      console.error("Error updating:", error);
+      // Si falla, revertimos el cambio visual para que sepas que hubo error
+      alert("⚠️ Error de red: No se pudo marcar como listo.");
       setHiddenIds(prev => prev.filter(hid => hid !== id));
-    } else {
-      console.log("✅ Pedido actualizado correctamente en la nube");
     }
   };
 
