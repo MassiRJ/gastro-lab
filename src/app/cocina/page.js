@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Clock, CheckCircle, Utensils, Flame, MapPin } from "lucide-react";
+import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; // Importamos Loader2
 import { supabase } from "../../lib/supabaseClient";
 
 export default function KitchenDisplay() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
+  const [processingId, setProcessingId] = useState(null); // Para saber qué botón está cargando
   
   // LOGIN
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // 🛡️ LISTA NEGRA: Aquí guardamos los IDs que estamos borrando para que no revivan
+  // 🛡️ LISTA NEGRA: Guardamos los IDs como TEXTO (Strings)
   const deletedIdsRef = useRef(new Set()); 
 
   useEffect(() => {
@@ -40,35 +41,43 @@ export default function KitchenDisplay() {
     const { data } = await supabase
       .from("orders")
       .select("*")
-      .order("created_at", { ascending: true }); // Traemos todos para filtrar aqui
+      .order("created_at", { ascending: true });
     
     if (data) {
-      // FILTRO ANTI-ZOMBIE: 
-      // Solo mostramos los pendientes QUE NO esten en la lista de borrados
+      // FILTRO ANTI-ZOMBIE (A PRUEBA DE FALLOS):
+      // Convertimos todo a String() para asegurar que la comparación funcione siempre
       const cleanOrders = data.filter(o => 
-        o.status === 'pendiente' && !deletedIdsRef.current.has(o.id)
+        o.status === 'pendiente' && !deletedIdsRef.current.has(String(o.id))
       );
       setOrders(cleanOrders);
     }
   };
 
   const markAsReady = async (id, e) => {
-    // 1. Evitamos que el click atraviese el botón (propagación)
     if(e) e.stopPropagation();
+    
+    // 1. Convertimos ID a String para evitar errores 10 vs "10"
+    const idString = String(id);
 
-    // 2. Lo agregamos a la LISTA NEGRA inmediatamente
-    deletedIdsRef.current.add(id);
+    // 2. Bloqueamos el botón visualmente para que sepas que el click entró
+    setProcessingId(id);
 
-    // 3. Lo borramos visualmente YA (Feedback instantáneo)
-    setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
+    // 3. Agregamos a la lista negra
+    deletedIdsRef.current.add(idString);
 
-    // 4. Mandamos la orden de borrar a la Base de Datos
+    // 4. Lo borramos de la pantalla AL INSTANTE
+    setOrders(prevOrders => prevOrders.filter((o) => String(o.id) !== idString));
+
+    // 5. Enviamos la orden destructora al servidor
     const { error } = await supabase.rpc('eliminar_pedido', { pedido_id: id });
       
     if (error) {
-      console.error("Error al borrar en DB:", error);
-      // Si falló real, lo sacamos de la lista negra para que vuelva a aparecer
-      deletedIdsRef.current.delete(id);
+      console.error("Error al borrar:", error);
+      // Si falla, lo sacamos de la lista negra
+      deletedIdsRef.current.delete(idString);
+      setProcessingId(null);
+    } else {
+      setProcessingId(null);
     }
   };
 
@@ -139,10 +148,17 @@ export default function KitchenDisplay() {
 
               <div className="p-3 bg-zinc-800 border-t border-zinc-700">
                 <button 
-                  onClick={(e) => markAsReady(order.id, e)} // Pasamos el evento 'e'
-                  className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg"
+                  onClick={(e) => markAsReady(order.id, e)}
+                  disabled={processingId === order.id} // 🚫 EVITA DOBLE CLICK
+                  className={`w-full font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg 
+                    ${processingId === order.id ? 'bg-zinc-700 cursor-not-allowed opacity-50' : 'bg-green-600 hover:bg-green-500 active:scale-95 text-white'}
+                  `}
                 >
-                  <CheckCircle size={20} /> PEDIDO LISTO
+                  {processingId === order.id ? (
+                    <><Loader2 className="animate-spin" /> PROCESANDO...</>
+                  ) : (
+                    <><CheckCircle size={20} /> PEDIDO LISTO</>
+                  )}
                 </button>
               </div>
             </div>
