@@ -68,16 +68,21 @@ export default function KitchenDisplay() {
 
   // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
   const markAsReady = async (id) => {
-    // SIN PREGUNTAR, BORRAMOS DIRECTO
-    const { error } = await supabase
-      .from('orders')
-      .delete()
-      .eq('id', id);
+    // 1. Confirmación rápida (opcional)
+    const confirmar = window.confirm("¿Despachar y borrar pedido?");
+    if (!confirmar) return;
+
+    // 2. Llamamos a la función destructora (RPC)
+    const { error } = await supabase.rpc('eliminar_pedido', { 
+      pedido_id: id 
+    });
       
     if (error) {
-      console.error(error); // Si falla, solo lo vemos en consola
+      // Si falla aquí, dime QUÉ DICE esta alerta
+      alert("❌ Error RPC: " + error.message);
+      console.error(error);
     } else {
-      // Lo sacamos de la pantalla al instante
+      // 3. Éxito: Lo borramos de la pantalla a la fuerza
       setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
     }
   };
