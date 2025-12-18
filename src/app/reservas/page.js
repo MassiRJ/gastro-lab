@@ -12,91 +12,70 @@ export default function ReservationsAdmin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState(null);
-
-  // --- ESTADOS DE LAS RESERVAS ---
   const [reservations, setReservations] = useState([]);
 
-  // 1. VERIFICAR SI YA HAY SESIÓN AL CARGAR
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setLoading(false);
-      if (session) fetchReservations(); // Si ya estaba logueado, carga los datos
+      if (session) fetchReservations();
     };
     checkSession();
   }, []);
 
-  // 2. FUNCIÓN PARA INICIAR SESIÓN
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoginError(null);
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setLoginError("Credenciales incorrectas. Intenta de nuevo.");
+      setLoginError("Credenciales incorrectas.");
     } else {
       setSession(data.session);
-      fetchReservations(); // Cargar datos al entrar
+      fetchReservations();
     }
   };
 
-  // 3. FUNCIÓN PARA CERRAR SESIÓN
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setSession(null);
     setReservations([]);
   };
 
-  // 4. TRAER DATOS (Solo se ejecuta si hay sesión)
   const fetchReservations = async () => {
-    const { data, error } = await supabase
-      .from("reservations")
-      .select("*")
-      .order("date", { ascending: true });
-    
+    const { data } = await supabase.from("reservations").select("*").order("date", { ascending: true });
     if (data) setReservations(data);
   };
 
   const deleteReservation = async (id) => {
-    const confirmDelete = window.confirm("¿Estás seguro de eliminar esta reserva?");
-    if (!confirmDelete) return;
-
+    if (!window.confirm("¿Eliminar reserva?")) return;
     const { error } = await supabase.from("reservations").delete().match({ id });
-    if (!error) {
-      setReservations(reservations.filter((r) => r.id !== id));
-    }
+    if (!error) setReservations(reservations.filter((r) => r.id !== id));
   };
 
-  // --- PANTALLA DE CARGA ---
-  if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Cargando sistema...</div>;
+  if (loading) return <div className="min-h-screen bg-gray-100 flex items-center justify-center text-gray-500">Cargando...</div>;
 
-  // --- SI NO HAY SESIÓN, MOSTRAMOS EL LOGIN ---
+  // --- LOGIN (MODO CLARO) ---
   if (!session) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-200">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
-              <Lock className="text-yellow-500" size={32} />
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock className="text-yellow-600" size={32} />
             </div>
-            <h1 className="text-2xl font-bold text-white">Acceso Administrativo</h1>
-            <p className="text-gray-400 text-sm mt-2">Solo personal autorizado</p>
+            <h1 className="text-2xl font-bold text-gray-800">Administración</h1>
+            <p className="text-gray-500 text-sm mt-2">Gastro Lab System</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Correo Electrónico</label>
+              <label className="text-xs text-gray-500 mb-1 block">Correo</label>
               <input 
                 type="email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
-                placeholder="admin@gastrolab.com"
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-yellow-500 focus:outline-none"
               />
             </div>
             <div>
@@ -105,17 +84,12 @@ export default function ReservationsAdmin() {
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
-                placeholder="••••••••"
+                className="w-full bg-gray-50 border border-gray-300 rounded-lg p-3 text-gray-900 focus:border-yellow-500 focus:outline-none"
               />
             </div>
-
-            {loginError && (
-              <p className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded">{loginError}</p>
-            )}
-
-            <button type="submit" className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition-colors">
-              Ingresar al Sistema
+            {loginError && <p className="text-red-500 text-sm text-center">{loginError}</p>}
+            <button type="submit" className="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition-colors">
+              Entrar
             </button>
           </form>
         </div>
@@ -123,60 +97,52 @@ export default function ReservationsAdmin() {
     );
   }
 
-  // --- SI HAY SESIÓN, MOSTRAMOS EL DASHBOARD ---
+  // --- DASHBOARD (MODO CLARO) ---
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8">
+    <div className="min-h-screen bg-gray-100 text-gray-800 p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-yellow-500">Panel de Control</h1>
-            <p className="text-gray-400">Gestiona tus reservas en tiempo real</p>
+            <h1 className="text-3xl font-bold text-gray-900">Reservas</h1>
+            <p className="text-gray-500">Panel de Control</p>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg transition-colors text-sm"
-          >
-            <LogOut size={16} /> Cerrar Sesión
+          <button onClick={handleLogout} className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm shadow-sm text-gray-700">
+            <LogOut size={16} /> Salir
           </button>
         </div>
 
         <div className="grid gap-4">
           {reservations.length === 0 ? (
-            <div className="text-center py-20 bg-zinc-900 rounded-2xl border border-zinc-800">
-              <p className="text-gray-500">No hay reservas pendientes</p>
+            <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200">
+              <p className="text-gray-400">Sin reservas pendientes</p>
             </div>
           ) : (
             reservations.map((res) => (
-              <div key={res.id} className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-yellow-500/30 transition-colors">
+              <div key={res.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-6">
-                  <div className="bg-zinc-800 p-4 rounded-xl text-center min-w-[100px]">
-                    <p className="text-yellow-500 font-bold text-xl">{res.time}</p>
-                    <p className="text-gray-400 text-sm">{res.date}</p>
+                  <div className="bg-gray-50 p-4 rounded-xl text-center min-w-[100px] border border-gray-100">
+                    <p className="text-black font-bold text-xl">{res.time}</p>
+                    <p className="text-gray-500 text-sm">{res.date}</p>
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-bold text-xl flex items-center gap-2">
+                    <h3 className="font-bold text-xl text-gray-900 flex items-center gap-2">
                       <User size={18} className="text-gray-400" /> {res.name}
                     </h3>
-                    <p className="text-gray-400 flex items-center gap-2">
+                    <p className="text-gray-500 flex items-center gap-2">
                       <Phone size={14} /> {res.phone}
                     </p>
-                    <p className="text-gray-400 flex items-center gap-2">
-                      <Users size={14} /> {res.people} Personas
+                    <p className="text-gray-500 flex items-center gap-2">
+                      <Users size={14} /> {res.people} px
                     </p>
-                    <span className="inline-block px-2 py-1 bg-green-900/30 text-green-400 text-xs rounded border border-green-900">
-                      Pago: S/ {res.paid_amount} ({res.payment_status})
+                    <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded border border-green-200 font-medium">
+                      Pagado: S/ {res.paid_amount}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex gap-3 w-full md:w-auto">
-                  <button 
-                    onClick={() => deleteReservation(res.id)}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-red-900/20 text-red-400 px-4 py-3 rounded-xl hover:bg-red-900/40 transition-colors border border-red-900/30"
-                  >
-                    <Trash2 size={18} /> Cancelar
-                  </button>
-                </div>
+                <button onClick={() => deleteReservation(res.id)} className="text-red-500 hover:bg-red-50 p-3 rounded-lg transition-colors">
+                    <Trash2 size={20} />
+                </button>
               </div>
             ))
           )}
