@@ -1,154 +1,187 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, Trash2, User, Phone, Users, Check, XCircle } from "lucide-react";
+import { Calendar, Trash2, User, Phone, Users, Check, XCircle, LogOut, Lock } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function ReservationsAdmin() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // --- ESTADOS DEL LOGIN ---
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState(null);
+
+  // --- ESTADOS DE LAS RESERVAS ---
   const [reservations, setReservations] = useState([]);
 
-  // Cargar reservas desde la Nube
+  // 1. VERIFICAR SI YA HAY SESIÓN AL CARGAR
   useEffect(() => {
-    const fetchReservations = async () => {
-      // Pedimos todo a la tabla 'reservations', ordenado por ID descendente
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('*')
-        .order('id', { ascending: false });
-      
-      if (data) setReservations(data);
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setLoading(false);
+      if (session) fetchReservations(); // Si ya estaba logueado, carga los datos
     };
-
-    fetchReservations();
-    
-    // Polling cada 5 segs (luego lo haremos Realtime)
-    const interval = setInterval(fetchReservations, 5000);
-    return () => clearInterval(interval);
+    checkSession();
   }, []);
 
-  // Actualizar estado en la Nube
-  const updateStatus = async (id, newStatus) => {
-    // 1. Actualizamos visualmente rápido (Optimistic UI)
-    const updatedLocal = reservations.map(r => r.id === id ? { ...r, status: newStatus } : r);
-    setReservations(updatedLocal);
-
-    // 2. Enviamos el cambio a la base de datos
-    const { error } = await supabase
-      .from('reservations')
-      .update({ status: newStatus })
-      .eq('id', id);
+  // 2. FUNCIÓN PARA INICIAR SESIÓN
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError(null);
     
-    if (error) console.error("Error actualizando:", error);
-  };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  // ... (El resto del renderizado sigue igual, solo cambia cómo obtenemos los datos)
-
-  const getStatusBadge = (status) => {
-    switch(status) {
-      case "confirmada": return <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Confirmada</span>;
-      case "en_mesa": return <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">En Mesa</span>;
-      case "no_show": return <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">No Vino</span>;
-      default: return <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">Pendiente</span>;
+    if (error) {
+      setLoginError("Credenciales incorrectas. Intenta de nuevo.");
+    } else {
+      setSession(data.session);
+      fetchReservations(); // Cargar datos al entrar
     }
   };
 
-  const deleteReservation = (id) => {
-    if (!confirm("¿Eliminar esta reserva?")) return;
-    const updated = reservations.filter(r => r.id !== id);
-    setReservations(updated);
-    localStorage.setItem("restaurant_reservations", JSON.stringify(updated));
+  // 3. FUNCIÓN PARA CERRAR SESIÓN
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setReservations([]);
   };
 
+  // 4. TRAER DATOS (Solo se ejecuta si hay sesión)
+  const fetchReservations = async () => {
+    const { data, error } = await supabase
+      .from("reservations")
+      .select("*")
+      .order("date", { ascending: true });
+    
+    if (data) setReservations(data);
+  };
+
+  const deleteReservation = async (id) => {
+    const confirmDelete = window.confirm("¿Estás seguro de eliminar esta reserva?");
+    if (!confirmDelete) return;
+
+    const { error } = await supabase.from("reservations").delete().match({ id });
+    if (!error) {
+      setReservations(reservations.filter((r) => r.id !== id));
+    }
+  };
+
+  // --- PANTALLA DE CARGA ---
+  if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Cargando sistema...</div>;
+
+  // --- SI NO HAY SESIÓN, MOSTRAMOS EL LOGIN ---
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-yellow-500/20">
+              <Lock className="text-yellow-500" size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-white">Acceso Administrativo</h1>
+            <p className="text-gray-400 text-sm mt-2">Solo personal autorizado</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Correo Electrónico</label>
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
+                placeholder="admin@gastrolab.com"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Contraseña</label>
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
+                placeholder="••••••••"
+              />
+            </div>
+
+            {loginError && (
+              <p className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded">{loginError}</p>
+            )}
+
+            <button type="submit" className="w-full bg-yellow-500 text-black font-bold py-3 rounded-lg hover:bg-yellow-400 transition-colors">
+              Ingresar al Sistema
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // --- SI HAY SESIÓN, MOSTRAMOS EL DASHBOARD ---
   return (
-    <main className="min-h-screen bg-gray-100 p-8 text-zinc-800 font-sans">
+    <div className="min-h-screen bg-black text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-zinc-900 flex items-center gap-2">
-              <Calendar className="text-purple-600" /> Libro de Reservas
-            </h1>
-            <p className="text-gray-500">Gestión de tolerancia y asistencia</p>
+            <h1 className="text-3xl font-bold text-yellow-500">Panel de Control</h1>
+            <p className="text-gray-400">Gestiona tus reservas en tiempo real</p>
           </div>
-          <div className="bg-white px-6 py-3 rounded-xl shadow-sm border border-gray-200">
-            <span className="block text-xs text-gray-400 uppercase font-bold">Total Reservas</span>
-            <span className="block text-2xl font-bold text-purple-600">{reservations.length}</span>
-          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            <LogOut size={16} /> Cerrar Sesión
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reservations.map((res) => (
-            <div key={res.id} className={`bg-white p-6 rounded-xl shadow-sm border border-gray-200 relative group ${res.status === 'no_show' ? 'opacity-60 grayscale' : ''}`}>
-              
-              {/* Botón Eliminar (Visible en Hover) */}
-              <button 
-                  onClick={() => deleteReservation(res.id)}
-                  className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                  title="Borrar del sistema"
-                >
-                  <Trash2 size={18} />
-              </button>
-
-              {/* Header con Estado y PAGO (MODIFICADO) */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex flex-col gap-2">
-                   <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-bold w-fit">
-                    {res.time}
-                  </span>
-                  {/* SELLO DE GARANTÍA */}
-                  {res.paymentStatus === "PAGADO" && (
-                     <span className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
-                        S/ {res.paidAmount} PAGADO ({res.paymentMethod})
-                     </span>
-                  )}
-                </div>
-                {getStatusBadge(res.status || 'confirmada')}
-              </div>
-
-              {/* Datos del Cliente */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3">
-                  <User className="text-gray-400" size={18} />
-                  <span className="font-bold text-gray-900 text-lg">{res.name}</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Users className="text-gray-400" size={18} />
-                  <span>Mesa para {res.people}</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-600">
-                  <Phone className="text-gray-400" size={18} />
-                  <a href={`tel:${res.phone}`} className="hover:text-purple-600 underline decoration-dotted">
-                    {res.phone}
-                  </a>
-                </div>
-              </div>
-
-              {/* BOTONES DE GESTIÓN (ANFITRIONA) */}
-              {res.status !== 'no_show' && res.status !== 'en_mesa' && (
-                <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
-                  <button 
-                    onClick={() => updateStatus(res.id, "en_mesa")}
-                    className="flex items-center justify-center gap-1 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 font-bold text-sm transition-colors"
-                  >
-                    <Check size={16} /> LLEGÓ
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if(confirm("¿Marcar como NO ASISTIÓ? Esto liberará el cupo.")) updateStatus(res.id, "no_show");
-                    }}
-                    className="flex items-center justify-center gap-1 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-bold text-sm transition-colors"
-                  >
-                    <XCircle size={16} /> NO VINO
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-4 text-xs text-gray-400 text-center">
-                Fecha: {res.date}
-              </div>
+        <div className="grid gap-4">
+          {reservations.length === 0 ? (
+            <div className="text-center py-20 bg-zinc-900 rounded-2xl border border-zinc-800">
+              <p className="text-gray-500">No hay reservas pendientes</p>
             </div>
-          ))}
+          ) : (
+            reservations.map((res) => (
+              <div key={res.id} className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-yellow-500/30 transition-colors">
+                <div className="flex items-center gap-6">
+                  <div className="bg-zinc-800 p-4 rounded-xl text-center min-w-[100px]">
+                    <p className="text-yellow-500 font-bold text-xl">{res.time}</p>
+                    <p className="text-gray-400 text-sm">{res.date}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-xl flex items-center gap-2">
+                      <User size={18} className="text-gray-400" /> {res.name}
+                    </h3>
+                    <p className="text-gray-400 flex items-center gap-2">
+                      <Phone size={14} /> {res.phone}
+                    </p>
+                    <p className="text-gray-400 flex items-center gap-2">
+                      <Users size={14} /> {res.people} Personas
+                    </p>
+                    <span className="inline-block px-2 py-1 bg-green-900/30 text-green-400 text-xs rounded border border-green-900">
+                      Pago: S/ {res.paid_amount} ({res.payment_status})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => deleteReservation(res.id)}
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-red-900/20 text-red-400 px-4 py-3 rounded-xl hover:bg-red-900/40 transition-colors border border-red-900/30"
+                  >
+                    <Trash2 size={18} /> Cancelar
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }
