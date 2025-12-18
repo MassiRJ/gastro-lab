@@ -68,22 +68,24 @@ export default function KitchenDisplay() {
 
   // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
   const markAsReady = async (id) => {
-    console.log("Intentando finalizar pedido ID:", id); // Muestra el ID en la consola
+    // Confirmación visual rápida
+    if(!confirm("¿Confirmar que el pedido salió? Se borrará de la lista.")) return;
 
-    // Método Clásico UPDATE (Ahora sí funcionará porque RLS está desactivado)
+    console.log("Intentando BORRAR pedido ID:", id);
+
+    // USAMOS .delete() EN LUGAR DE .update()
+    // Esto es mucho más efectivo si tienes problemas de permisos/red con el Update
     const { error } = await supabase
       .from('orders')
-      .update({ status: 'listo' }) 
-      .eq('id', id); // Busca el pedido por su ID exacto
+      .delete()
+      .eq('id', id);
       
     if (error) {
-      alert("❌ Error: " + error.message);
+      alert("❌ Error al borrar: " + error.message);
       console.error(error);
     } else {
-      // Si funciona, lo quitamos de la pantalla visualmente
+      // Éxito: Lo sacamos de la pantalla
       setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
-      // Opcional: Sonido de éxito o log
-      console.log("Pedido finalizado correctamente");
     }
   };
 
