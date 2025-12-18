@@ -1,25 +1,36 @@
 "use client";
 
 import { X, Trash2, CreditCard, ShoppingBag, Banknote, QrCode, CheckCircle, MapPin, Receipt } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react"; // Agregamos useMemo
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClearCart }) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false); // Nuevo estado para pantalla de éxito
+  const [orderSuccess, setOrderSuccess] = useState(false);
   const [tableNumber, setTableNumber] = useState(""); 
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
 
-  // Calcular total asegurando que sean números
-  const total = cartItems.reduce((sum, item) => {
-    const price = parseFloat(item.price) || 0;
-    return sum + price;
-  }, 0);
+  // --- CORRECCIÓN MATEMÁTICA "A PRUEBA DE TODO" ---
+  const total = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      // 1. Convertimos a string por si acaso
+      let priceString = String(item.price);
+      
+      // 2. Quitamos todo lo que NO sea número o punto (ej: "S/ 25.00" -> "25.00")
+      let cleanPrice = priceString.replace(/[^0-9.]/g, '');
+      
+      // 3. Convertimos a número real
+      const numberPrice = parseFloat(cleanPrice) || 0;
+      
+      return sum + numberPrice;
+    }, 0);
+  }, [cartItems]);
+  // ------------------------------------------------
 
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
     if (!tableNumber) {
-      alert("⚠️ Por favor selecciona tu número de mesa."); // Esta alerta sí es útil para validación
+      alert("⚠️ Por favor selecciona tu número de mesa.");
       return;
     }
 
@@ -29,7 +40,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
       table_number: tableNumber,
       customer_name: "Cliente Mesa",
       items: cartItems,
-      total_price: total,
+      total_price: total, // Guardamos el número limpio
       status: 'pendiente',
       payment_method: paymentMethod
     };
@@ -40,11 +51,8 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
       alert("Error: " + error.message);
       setIsProcessing(false);
     } else {
-      // EN LUGAR DE ALERT, CAMBIAMOS EL ESTADO A "EXITO"
       setOrderSuccess(true);
       setIsProcessing(false);
-      
-      // Limpiamos el carrito en la "memoria" del padre, pero no cerramos el sidebar aún
       if (onClearCart) onClearCart(); 
     }
   };
@@ -56,9 +64,9 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
   };
 
   return (
-    <div className={`fixed inset-y-0 right-0 w-full md:w-96 bg-zinc-950 border-l border-zinc-800 transform transition-transform duration-300 z-50 shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+    <div className={`fixed inset-y-0 right-0 w-full md:w-96 bg-zinc-950 border-l border-zinc-800 transform transition-transform duration-300 z-50 shadow-2xl flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       
-      {/* --- VISTA DE ÉXITO (TICKET) --- */}
+      {/* VISTA DE TICKET (EXITO) */}
       {orderSuccess ? (
         <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-300">
           <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mb-6 text-green-500 animate-bounce">
@@ -68,7 +76,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
           <h2 className="text-3xl font-bold text-white mb-2">¡Pedido Enviado!</h2>
           <p className="text-gray-400 mb-8">La cocina ya está preparando tus platos.</p>
 
-          <div className="bg-zinc-900 w-full p-6 rounded-2xl border border-zinc-800 space-y-4 mb-8">
+          <div className="bg-zinc-900 w-full p-6 rounded-2xl border border-zinc-800 space-y-4 mb-8 text-left">
             <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
               <span className="text-gray-400 flex items-center gap-2"><MapPin size={16}/> Mesa</span>
               <span className="text-white font-bold text-xl">{tableNumber}</span>
@@ -80,7 +88,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-gray-400">Método de Pago</span>
+              <span className="text-gray-400">Pago</span>
               <span className="text-white font-bold uppercase bg-zinc-800 px-3 py-1 rounded text-sm border border-zinc-700">
                 {paymentMethod === 'yape' ? '📱 Yape/Plin' : '💵 Efectivo'}
               </span>
@@ -95,20 +103,20 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
           </button>
         </div>
       ) : (
-        /* --- VISTA NORMAL DEL CARRITO --- */
-        <div className="p-6 h-full flex flex-col">
-          {/* Encabezado */}
-          <div className="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-              <ShoppingBag className="text-yellow-500" /> Tu Pedido
-            </h2>
-            <button onClick={onClose} className="p-2 bg-zinc-900 rounded-full text-gray-400 hover:text-white transition-colors">
-              <X size={20} />
-            </button>
+        /* VISTA DE CARRITO */
+        <>
+          <div className="p-6 flex-none border-b border-zinc-800">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <ShoppingBag className="text-yellow-500" /> Tu Pedido
+              </h2>
+              <button onClick={onClose} className="p-2 bg-zinc-900 rounded-full text-gray-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
-          {/* Lista de Items */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {cartItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 opacity-50">
                 <ShoppingBag size={48} className="mb-2" />
@@ -119,7 +127,10 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
                 <div key={index} className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-colors">
                   <div>
                     <h4 className="font-bold text-white">{item.title}</h4>
-                    <p className="text-yellow-500 text-sm font-bold">S/ {item.price}</p>
+                    {/* Mostramos el precio tal cual viene, por estética */}
+                    <p className="text-yellow-500 text-sm font-bold">
+                        {typeof item.price === 'number' ? `S/ ${item.price.toFixed(2)}` : item.price}
+                    </p>
                   </div>
                   <button 
                     onClick={() => onRemoveItem(index)} 
@@ -132,11 +143,11 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
             )}
           </div>
 
-          {/* Zona de Pago */}
+          {/* FOOTER FIJO (TOTAL Y PAGO) */}
           {cartItems.length > 0 && (
-            <div className="border-t border-zinc-800 pt-6 space-y-5 bg-zinc-950">
+            <div className="p-6 bg-zinc-950 border-t border-zinc-800 space-y-5 flex-none z-10">
               
-              {/* Selección de Mesa */}
+              {/* Selector Mesa */}
               <div>
                 <label className="text-gray-400 text-xs uppercase font-bold mb-2 block ml-1">Ubicación</label>
                 <div className="relative">
@@ -155,51 +166,43 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem, 
                 </div>
               </div>
 
-              {/* Método de Pago */}
-              <div>
-                <label className="text-gray-400 text-xs uppercase font-bold mb-2 block ml-1">Método de Pago</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => setPaymentMethod('efectivo')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${paymentMethod === 'efectivo' ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
-                  >
-                    <Banknote size={24} />
-                    <span className="text-sm font-bold">Efectivo</span>
-                  </button>
+              {/* Selector Pago */}
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => setPaymentMethod('efectivo')}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${paymentMethod === 'efectivo' ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
+                >
+                  <Banknote size={24} />
+                  <span className="text-sm font-bold">Efectivo</span>
+                </button>
 
-                  <button 
-                    onClick={() => setPaymentMethod('yape')}
-                    className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${paymentMethod === 'yape' ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
-                  >
-                    <QrCode size={24} />
-                    <span className="text-sm font-bold">Yape/Plin</span>
-                  </button>
-                </div>
+                <button 
+                  onClick={() => setPaymentMethod('yape')}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${paymentMethod === 'yape' ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-500/20' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
+                >
+                  <QrCode size={24} />
+                  <span className="text-sm font-bold">Yape</span>
+                </button>
               </div>
 
-              {/* Total y Confirmar */}
+              {/* TOTAL GRANDE */}
               <div className="bg-zinc-900 p-5 rounded-xl border border-zinc-800 mt-2">
                 <div className="flex justify-between items-end mb-4">
                   <span className="text-gray-400 font-medium">Total a Pagar</span>
-                  <span className="text-3xl font-bold text-white tracking-tight">S/ {total.toFixed(2)}</span>
+                  <span className="text-4xl font-extrabold text-white tracking-tight">S/ {total.toFixed(2)}</span>
                 </div>
 
                 <button 
                   onClick={handleCheckout}
                   disabled={isProcessing}
-                  className="w-full py-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-all flex justify-center items-center gap-2 text-lg shadow-lg active:scale-95 disabled:opacity-50 disabled:scale-100"
+                  className="w-full py-4 bg-white text-black font-bold rounded-xl hover:bg-gray-200 transition-all flex justify-center items-center gap-2 text-lg shadow-lg active:scale-95 disabled:opacity-50"
                 >
-                  {isProcessing ? (
-                    <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span> Enviando...</span>
-                  ) : (
-                    <>Confirmar Pedido <CreditCard size={20} /></>
-                  )}
+                  {isProcessing ? "Enviando..." : "Confirmar Pedido"} <CreditCard size={20} />
                 </button>
               </div>
-
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
