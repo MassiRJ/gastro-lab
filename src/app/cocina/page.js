@@ -68,21 +68,20 @@ export default function KitchenDisplay() {
 
   // --- AQUÍ ESTÁ LA FUNCIÓN CORREGIDA Y SEGURA ---
   const markAsReady = async (id) => {
-    // 1. Intentamos actualizar en la base de datos
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: 'listo' }) // Cambiamos a 'listo'
-      .eq('id', id);
+    console.log("Intentando marcar ID:", id); // Para ver en consola si llega el ID
+
+    // USAMOS RPC EN LUGAR DE UPDATE DIRECTO
+    const { error } = await supabase.rpc('marcar_pedido_listo', { 
+      pedido_id: id 
+    });
       
     if (error) {
-      // 2. Si falla, mostramos por qué (probablemente falte correr el SQL)
-      alert("Error al actualizar: " + error.message);
+      alert("❌ Error RPC: " + error.message);
       console.error(error);
     } else {
-      // 3. Si funciona, lo quitamos de la pantalla inmediatamente
+      // Si funciona, actualizamos la vista
+      console.log("¡Pedido marcado con éxito!");
       setOrders(prevOrders => prevOrders.filter((o) => o.id !== id));
-      
-      // Opcional: Forzar una recarga real de datos por si acaso
       fetchOrders(); 
     }
   };
