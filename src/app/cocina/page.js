@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, Users, CheckCircle, Utensils, Lock, Flame } from "lucide-react";
+import { Clock, Users, CheckCircle, Utensils, Flame } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function KitchenDisplay() {
@@ -14,43 +14,58 @@ export default function KitchenDisplay() {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState(null);
 
+  // --- EFECTO DE CARGA Y AUTO-REFRESCO ---
   useEffect(() => {
-    checkSession();
-  }, []);
+    // 1. Chequear sesión al entrar
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setLoading(false);
+      if (session) fetchOrders();
+    };
+    initSession();
 
-  const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setSession(session);
-    setLoading(false);
-    if (session) fetchOrders();
-  };
+    // 2. CONFIGURAR EL AUTO-REFRESCO (Cada 5 segundos)
+    const interval = setInterval(() => {
+      // Solo actualizamos si ya hay alguien logueado
+      if (session) {
+        console.log("Actualizando cocina..."); // Para ver en consola
+        fetchOrders();
+      }
+    }, 5000); // 5000 ms = 5 segundos
+
+    // Limpiar el intervalo cuando se sale de la página
+    return () => clearInterval(interval);
+  }, [session]); // Se reinicia si cambia la sesión
 
   const handleLogin = async (e) => {
     e.preventDefault();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setLoginError("Acceso denegado.");
-    else { setSession(data.session); fetchOrders(); }
+    else { 
+      setSession(data.session); 
+      fetchOrders(); 
+    }
   };
 
   const fetchOrders = async () => {
-    // Solo traemos las confirmadas, no las canceladas ni las ya servidas
     const { data } = await supabase
       .from("reservations")
       .select("*")
       .eq('status', 'confirmada') 
       .order("time", { ascending: true });
+    
+    // Solo actualizamos si hay datos para evitar parpadeos innecesarios
     if (data) setOrders(data);
   };
 
   const markAsServed = async (id) => {
-    // Marcamos como "atendida" para que desaparezca de la cocina pero quede en la base de datos
     const { error } = await supabase
       .from("reservations")
       .update({ status: 'atendida' })
       .eq('id', id);
       
     if (!error) {
-      // Efecto visual de eliminar
       setOrders(orders.filter((order) => order.id !== id));
     }
   };
@@ -96,20 +111,25 @@ export default function KitchenDisplay() {
           <h1 className="text-4xl font-bold flex items-center gap-3">
             <Utensils className="text-orange-400" /> Comandas Pendientes
           </h1>
-          <div className="bg-orange-500/20 px-6 py-2 rounded-full border border-orange-500/50">
+          <div className="bg-orange-500/20 px-6 py-2 rounded-full border border-orange-500/50 flex items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
             <span className="font-bold text-orange-200">{orders.length} en cola</span>
           </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {orders.length === 0 ? (
-            <div className="col-span-full text-center py-40 opacity-50">
+            <div className="col-span-full text-center py-40 opacity-50 animate-pulse">
               <CheckCircle size={80} className="mx-auto mb-4 text-green-400" />
               <h2 className="text-3xl font-bold">¡Todo limpio, Chef!</h2>
+              <p className="mt-2 text-sm">Esperando nuevos pedidos...</p>
             </div>
           ) : (
             orders.map((order) => (
-              <div key={order.id} className="backdrop-blur-xl bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col justify-between h-full hover:border-orange-500/50 transition-all duration-300 group">
+              <div key={order.id} className="backdrop-blur-xl bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col justify-between h-full hover:border-orange-500/50 transition-all duration-300 group animate-in fade-in slide-in-from-bottom-4">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <div className="bg-black/40 px-4 py-2 rounded-xl border border-white/5">
