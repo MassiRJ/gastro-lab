@@ -29,8 +29,30 @@ export default function KitchenDisplay() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) { setSession(data.session); fetchOrders(); }
+    console.log("Intentando iniciar sesión..."); // Chivato en consola
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        // SI HAY ERROR, QUE NOS AVISE
+        alert("❌ Error al entrar: " + error.message);
+        console.error("Error Supabase:", error);
+        setLoginError(error.message); // Si usas el estado de error visual
+      } else {
+        // SI TODO VA BIEN
+        console.log("Login exitoso:", data);
+        setSession(data.session);
+        fetchOrders();
+      }
+    } catch (err) {
+      // SI CRASHEA EL CÓDIGO
+      alert("🔥 Error Crítico: " + err.message);
+      console.error(err);
+    }
   };
 
   const fetchOrders = async () => {
