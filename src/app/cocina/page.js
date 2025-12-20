@@ -50,24 +50,27 @@ export default function KitchenDisplay() {
   const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
 
-    // 1. Ocultar visualmente (Feedback inmediato)
+    // 1. Ocultar visualmente YA
     setHiddenIds(prev => [...prev, id]);
 
-    console.log("Enviando orden segura para ID:", id);
+    // 2. Llamamos a NUESTRO PROPIO SERVIDOR (Esto no falla por CORS)
+    try {
+      const response = await fetch('/api/cocina', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
 
-    // 2. Usar RPC (Esto viaja como POST, igual que cuando creas un pedido)
-    // Si puedes crear pedidos, esto funcionará SÍ o SÍ.
-    const { error } = await supabase.rpc('cambiar_estado_listo', { 
-      id_buscado: id 
-    });
-      
-    if (error) {
-      console.error("Error RPC:", error);
-      alert("❌ Error: " + error.message);
+      if (!response.ok) {
+        throw new Error("El servidor rechazó la orden");
+      }
+      console.log("✅ Servidor confirmó el cambio.");
+
+    } catch (error) {
+      console.error("Error contactando al servidor:", error);
+      alert("⚠️ Error: " + error.message);
       // Si falla, lo mostramos de nuevo
       setHiddenIds(prev => prev.filter(hid => hid !== id));
-    } else {
-      console.log("✅ Éxito: Pedido marcado como listo en la nube.");
     }
   };
 
