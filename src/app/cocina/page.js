@@ -159,3 +159,5 @@ export default function KitchenDisplay() {
     </div>
   );
 }
+
+// Forzando actualización de Git
