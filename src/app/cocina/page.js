@@ -47,24 +47,42 @@ export default function KitchenDisplay() {
     
     if (data) setOrders(data);
   };
-
-  const markAsReady = async (id, e) => {
+const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
 
-    // 1. Ocultar visualmente YA (Feedback instantáneo)
+    // 1. Ocultar visualmente YA (Para que no te estrese verlo ahí)
     setHiddenIds(prev => [...prev, id]);
 
-    try {
-      // 2. Llamamos a la Server Action como si fuera una función normal
-      // (Next.js se encarga de la conexión oculta)
-      await marcarComoListo(id);
-      
-      console.log("✅ Servidor confirmó: Pedido listo");
+    // --- DATOS REALES (Pégalos aquí con cuidado) ---
+    const supabaseUrl = "https://dpjhsqwytgdircxnspff.supabase.co" 
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw"
+
+    console.log("🚀 Lanzando misil manual al ID:", id);
+
+    try 
+      // USAMOS FETCH NATIVO (Sin librería de Supabase)
+      // Llamamos directo a la API REST de la función RPC que creamos
+      const response = await fetch(`${PROJECT_URL}/rest/v1/rpc/marcar_listo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': API_KEY,
+          'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({ pedido_id: id })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Error del servidor: ${text}`);
+      }
+
+      console.log("✅ IMPACTO CONFIRMADO: Pedido actualizado.");
 
     } catch (error) {
-      console.error("❌ Fallo Server Action:", error);
-      alert("Error: " + error.message);
-      // Si falla, lo mostramos de nuevo
+      console.error("❌ Fallo manual:", error);
+      alert("Maldición, falló: " + error.message);
+      // Si falla, lo devolvemos a la pantalla
       setHiddenIds(prev => prev.filter(hid => hid !== id));
     }
   };
