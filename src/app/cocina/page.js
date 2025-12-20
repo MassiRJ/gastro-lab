@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; 
 import { supabase } from "../../lib/supabaseClient";
+import { marcarComoListo } from './actions';
 
 export default function KitchenDisplay() {
   const [session, setSession] = useState(null);
@@ -50,25 +51,19 @@ export default function KitchenDisplay() {
   const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
 
-    // 1. Ocultar visualmente YA
+    // 1. Ocultar visualmente YA (Feedback instantáneo)
     setHiddenIds(prev => [...prev, id]);
 
-    // 2. Llamamos a NUESTRO PROPIO SERVIDOR (Esto no falla por CORS)
     try {
-      const response = await fetch('/api/cocina', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-
-      if (!response.ok) {
-        throw new Error("El servidor rechazó la orden");
-      }
-      console.log("✅ Servidor confirmó el cambio.");
+      // 2. Llamamos a la Server Action como si fuera una función normal
+      // (Next.js se encarga de la conexión oculta)
+      await marcarComoListo(id);
+      
+      console.log("✅ Servidor confirmó: Pedido listo");
 
     } catch (error) {
-      console.error("Error contactando al servidor:", error);
-      alert("⚠️ Error: " + error.message);
+      console.error("❌ Fallo Server Action:", error);
+      alert("Error: " + error.message);
       // Si falla, lo mostramos de nuevo
       setHiddenIds(prev => prev.filter(hid => hid !== id));
     }
