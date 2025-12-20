@@ -1,3 +1,4 @@
+// VERSION FINAL ARREGLADA - FORZANDO ACTUALIZACION DE GIT
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,13 +17,10 @@ export default function KitchenDisplay() {
   // ESTADO LOCAL PARA OCULTAR INMEDIATAMENTE
   const [hiddenIds, setHiddenIds] = useState([]); 
 
-  // --- ⚠️ ZONA DE CREDENCIALES (EDITAR AQUI) ⚠️ ---
-  // Pega tu URL de Supabase (ej: https://tucodigo.supabase.co) SIN BARRA AL FINAL
+  // --- ZONA DE CREDENCIALES ---
   const PROJECT_URL = "https://dpjhsqwytgdircxnspff.supabase.co"; 
-    
-  // Pega tu ANON KEY (ej: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...)
   const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw";
-  // ----------------------------------------------------
+  // ----------------------------
 
   useEffect(() => {
     const initSession = async () => {
@@ -33,7 +31,6 @@ export default function KitchenDisplay() {
     };
     initSession();
 
-    // Refresco automático cada 5 seg
     const interval = setInterval(() => { if (session) fetchOrders(); }, 5000);
     return () => clearInterval(interval);
   }, [session]);
@@ -45,7 +42,6 @@ export default function KitchenDisplay() {
   };
 
   const fetchOrders = async () => {
-    // Solo traemos los PENDIENTES
     const { data } = await supabase
       .from("orders")
       .select("*")
@@ -62,9 +58,9 @@ export default function KitchenDisplay() {
     setHiddenIds(prev => [...prev, id]);
     console.log("🚀 Lanzando petición manual al ID:", id);
 
+    // AQUI ESTABA EL ERROR ANTES, AHORA ESTA LA LLAVE { CORRECTA
     try {
-      // USAMOS FETCH NATIVO (Sin librería de Supabase para evitar bloqueos)
-      // Llamamos directo a la API REST de la función RPC
+      // USAMOS FETCH NATIVO
       const response = await fetch(`${PROJECT_URL}/rest/v1/rpc/marcar_listo`, {
         method: 'POST',
         headers: {
@@ -84,13 +80,12 @@ export default function KitchenDisplay() {
 
     } catch (error) {
       console.error("❌ Fallo manual:", error);
-      // Si falla, lo devolvemos a la pantalla para que sepas que no se guardó
       alert("Error de conexión: " + error.message);
       setHiddenIds(prev => prev.filter(hid => hid !== id));
     }
   };
 
-  // Filtro Maestro: Oculta los que ya marcaste localmente
+  // Filtro Maestro
   const visibleOrders = orders.filter(order => !hiddenIds.includes(order.id));
 
   // --- VISTA LOGIN ---
@@ -159,5 +154,3 @@ export default function KitchenDisplay() {
     </div>
   );
 }
-
-// Forzando actualización de Git
