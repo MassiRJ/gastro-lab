@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Utensils, MapPin } from "lucide-react"; 
+import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; 
 import { supabase } from "../../lib/supabaseClient";
 
 export default function KitchenDisplay() {
@@ -12,6 +12,8 @@ export default function KitchenDisplay() {
   // LOGIN
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // ESTADO LOCAL PARA OCULTAR INMEDIATAMENTE
   const [hiddenIds, setHiddenIds] = useState([]); 
 
   // --- TUS CREDENCIALES ---
@@ -50,10 +52,8 @@ export default function KitchenDisplay() {
     if(e) e.stopPropagation();
     setHiddenIds(prev => [...prev, id]);
     
-    // HE CAMBIADO ESTE TEXTO PARA FORZAR A GIT A DETECTAR EL CAMBIO
     console.log("INTENTO DE DESBLOQUEO FINAL ID:", id);
 
-    // AQUI ESTA LA LLAVE { QUE FALTABA ANTES. NO LA BORRES.
     try { 
       const response = await fetch(`${PROJECT_URL}/rest/v1/rpc/marcar_listo`, {
         method: 'POST',
@@ -120,4 +120,3 @@ export default function KitchenDisplay() {
     </div>
   );
 }
-//SSSS
