@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { CheckCircle, Utensils, MapPin, Loader2 } from "lucide-react"; 
 import { supabase } from "../../lib/supabaseClient";
-import { marcarComoListo } from './actions';
 
 export default function KitchenDisplay() {
   const [session, setSession] = useState(null);
@@ -16,6 +15,14 @@ export default function KitchenDisplay() {
 
   // ESTADO LOCAL PARA OCULTAR INMEDIATAMENTE
   const [hiddenIds, setHiddenIds] = useState([]); 
+
+  // --- ⚠️ ZONA DE CREDENCIALES (EDITAR AQUI) ⚠️ ---
+  // Pega tu URL de Supabase (ej: https://tucodigo.supabase.co) SIN BARRA AL FINAL
+  const PROJECT_URL = "https://dpjhsqwytgdircxnspff.supabase.co"; 
+    
+  // Pega tu ANON KEY (ej: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...)
+  const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw";
+  // ----------------------------------------------------
 
   useEffect(() => {
     const initSession = async () => {
@@ -47,21 +54,17 @@ export default function KitchenDisplay() {
     
     if (data) setOrders(data);
   };
-const markAsReady = async (id, e) => {
+
+  const markAsReady = async (id, e) => {
     if(e) e.stopPropagation();
 
-    // 1. Ocultar visualmente YA (Para que no te estrese verlo ahí)
+    // 1. Ocultar visualmente YA
     setHiddenIds(prev => [...prev, id]);
+    console.log("🚀 Lanzando petición manual al ID:", id);
 
-    // --- DATOS REALES (Pégalos aquí con cuidado) ---
-    const supabaseUrl = "https://dpjhsqwytgdircxnspff.supabase.co"; 
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw";
-
-    console.log("🚀 Lanzando misil manual al ID:", id);
-
-    try 
-      // USAMOS FETCH NATIVO (Sin librería de Supabase)
-      // Llamamos directo a la API REST de la función RPC que creamos
+    try {
+      // USAMOS FETCH NATIVO (Sin librería de Supabase para evitar bloqueos)
+      // Llamamos directo a la API REST de la función RPC
       const response = await fetch(`${PROJECT_URL}/rest/v1/rpc/marcar_listo`, {
         method: 'POST',
         headers: {
@@ -81,8 +84,8 @@ const markAsReady = async (id, e) => {
 
     } catch (error) {
       console.error("❌ Fallo manual:", error);
-      alert("Maldición, falló: " + error.message);
-      // Si falla, lo devolvemos a la pantalla
+      // Si falla, lo devolvemos a la pantalla para que sepas que no se guardó
+      alert("Error de conexión: " + error.message);
       setHiddenIds(prev => prev.filter(hid => hid !== id));
     }
   };
@@ -90,7 +93,7 @@ const markAsReady = async (id, e) => {
   // Filtro Maestro: Oculta los que ya marcaste localmente
   const visibleOrders = orders.filter(order => !hiddenIds.includes(order.id));
 
-  // --- LOGIN ---
+  // --- VISTA LOGIN ---
   if (!session && !loading) {
      return (
        <div className="min-h-screen flex items-center justify-center p-4 bg-black">
