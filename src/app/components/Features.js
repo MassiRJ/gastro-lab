@@ -6,31 +6,28 @@ export default function Features() {
     <section className="py-12 bg-black">
       <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {/* ITEM 1 */}
-        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors">
+        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
           <div className="mb-4 p-3 bg-white/5 rounded-full">
             <Clock className="text-orange-500" size={32} />
           </div>
-          <h3 className="text-xl font-bold mb-2">Rápido</h3>
-          <p className="text-gray-400 text-sm">De la cocina a tu mesa en tiempo récord.</p>
+          <h3 className="text-xl font-bold mb-2">Velocidad Flash</h3>
+          <p className="text-gray-400 text-sm">De la cocina a tu mesa sin esperas.</p>
         </div>
 
-        {/* ITEM 2 */}
-        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors">
+        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
           <div className="mb-4 p-3 bg-white/5 rounded-full">
             <Wifi className="text-blue-500" size={32} />
           </div>
-          <h3 className="text-xl font-bold mb-2">Digital</h3>
-          <p className="text-gray-400 text-sm">Pide desde tu móvil sin esperar al mozo.</p>
+          <h3 className="text-xl font-bold mb-2">100% Digital</h3>
+          <p className="text-gray-400 text-sm">Tu móvil es tu mozo.</p>
         </div>
 
-        {/* ITEM 3 */}
-        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors">
+        <div className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5">
           <div className="mb-4 p-3 bg-white/5 rounded-full">
             <Award className="text-yellow-500" size={32} />
           </div>
-          <h3 className="text-xl font-bold mb-2">Calidad</h3>
-          <p className="text-gray-400 text-sm">Ingredientes premium seleccionados a diario.</p>
+          <h3 className="text-xl font-bold mb-2">Alta Calidad</h3>
+          <p className="text-gray-400 text-sm">Ingredientes frescos cada día.</p>
         </div>
 
       </div>

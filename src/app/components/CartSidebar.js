@@ -1,22 +1,22 @@
 "use client";
 import { X, Trash2 } from "lucide-react";
 
-export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem }) {
+export default function CartSidebar({ isOpen, onClose, cartItems = [], onRemoveItem }) {
   const total = cartItems.reduce((sum, item) => sum + item.price, 0);
 
   return (
     <>
-      {/* Overlay */}
       {isOpen && (
-        <div onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" />
+        <div onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]" />
       )}
       
-      {/* Sidebar */}
-      <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[60] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[70] transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-6 h-full flex flex-col">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-bold text-white">Tu Pedido</h2>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full"><X /></button>
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-white">
+                <X size={24} />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-4">
@@ -26,7 +26,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem }
               cartItems.map((item) => (
                 <div key={item.cartId} className="flex justify-between items-center bg-black/40 p-4 rounded-xl border border-white/5">
                   <div>
-                    <h4 className="font-bold">{item.title}</h4>
+                    <h4 className="font-bold text-white">{item.title}</h4>
                     <p className="text-emerald-400 text-sm">S/ {item.price}</p>
                   </div>
                   <button onClick={() => onRemoveItem(item.cartId)} className="text-red-500 hover:bg-red-500/10 p-2 rounded-lg">
@@ -38,7 +38,7 @@ export default function CartSidebar({ isOpen, onClose, cartItems, onRemoveItem }
           </div>
 
           <div className="mt-6 border-t border-white/10 pt-6">
-            <div className="flex justify-between text-xl font-bold mb-6">
+            <div className="flex justify-between text-xl font-bold mb-6 text-white">
               <span>Total</span>
               <span className="text-emerald-400">S/ {total.toFixed(2)}</span>
             </div>

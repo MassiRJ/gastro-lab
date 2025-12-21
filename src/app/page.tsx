@@ -6,7 +6,7 @@ import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Reservation from "./components/Reservation";
 import Footer from "./components/Footer";
-import CartSidebar from "./components/CartSidebar";
+import CartSidebar from "./components/CartSidebar.js";
 import Testimonials from "./components/Testimonials";
 import Features from "./components/Features";
 import Toast from "./components/Toast";
