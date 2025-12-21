@@ -1,19 +1,22 @@
-// VERSION MOZO SEGURA
 "use client";
 
 import { useState } from "react";
 import { ShoppingCart, Plus, ChefHat, Send, Trash2, Utensils, User, MapPin, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
-// DATOS FIJOS PARA EVITAR "UNDEFINED"
-const MENU_ITEMS = [
+// LISTAS SEPARADAS (IGUAL QUE EN EL MENU PRINCIPAL)
+const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
   { id: 3, category: "Entradas", title: "Papa a la Huancaína", price: 18.00 },
+];
+const FONDOS = [
   { id: 4, category: "Fondos", title: "Lomo Saltado", price: 45.00 },
   { id: 5, category: "Fondos", title: "Ají de Gallina", price: 30.00 },
   { id: 6, category: "Fondos", title: "Arroz con Mariscos", price: 42.00 },
   { id: 7, category: "Fondos", title: "Seco de Cordero", price: 48.00 },
+];
+const BEBIDAS = [
   { id: 8, category: "Bebidas", title: "Chicha Morada (Jarra)", price: 15.00 },
   { id: 9, category: "Bebidas", title: "Limonada Frozen", price: 12.00 },
   { id: 10, category: "Bebidas", title: "Cerveza Cusqueña", price: 10.00 },
@@ -29,12 +32,24 @@ export default function WaiterView() {
   const [tableNumber, setTableNumber] = useState("");
   const [waiterName, setWaiterName] = useState("");
 
+  // SELECCION MANUAL SIN FILTER
+  let itemsToShow = [];
+  if (activeCategory === "Entradas") itemsToShow = ENTRADAS;
+  else if (activeCategory === "Fondos") itemsToShow = FONDOS;
+  else itemsToShow = BEBIDAS;
+
   const addToCart = (item) => {
     setCart(prev => [...prev, { ...item, cartId: Math.random() }]);
   };
 
+  // ELIMINAR MANUALMENTE SIN FILTER
   const removeFromCart = (cartId) => {
-    setCart(prev => prev.filter(item => item.cartId !== cartId));
+    setCart(prev => {
+        const newCart = [...prev];
+        const index = newCart.findIndex(i => i.cartId === cartId);
+        if (index > -1) newCart.splice(index, 1);
+        return newCart;
+    });
   };
 
   const total = cart.reduce((sum, item) => sum + item.price, 0);
@@ -99,8 +114,7 @@ export default function WaiterView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-        {/* USAMOS EL FILTRO CON SEGURIDAD AQUI TAMBIEN */}
-        {MENU_ITEMS.filter(item => item.category === activeCategory).map(item => (
+        {itemsToShow.map(item => (
           <div key={item.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center active:scale-95 transition-transform">
             <div>
               <h3 className="font-bold text-lg">{item.title}</h3>
@@ -115,8 +129,7 @@ export default function WaiterView() {
           </div>
         ))}
       </div>
-      
-      {/* ... (El resto del carrito sigue igual) ... */}
+
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-4 pb-8 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-300">
           <div className="max-w-4xl mx-auto flex justify-between items-center">
@@ -148,70 +161,12 @@ export default function WaiterView() {
             <h2 className="text-xl font-bold flex items-center gap-2"><Utensils size={20}/> Confirmar Comanda</h2>
             <button onClick={() => setIsCheckoutOpen(false)} className="bg-zinc-800 p-2 rounded-full"><X size={24}/></button>
           </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-400 ml-1">N° Mesa</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 text-zinc-500" size={18}/>
-                  <input 
-                    type="number" 
-                    placeholder="Ej: 5"
-                    value={tableNumber}
-                    onChange={(e) => setTableNumber(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 pl-10 text-white font-bold text-lg outline-none focus:border-orange-500"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-zinc-400 ml-1">Tu Nombre</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 text-zinc-500" size={18}/>
-                  <input 
-                    type="text" 
-                    placeholder="Ej: Carlos"
-                    value={waiterName}
-                    onChange={(e) => setWaiterName(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 pl-10 text-white outline-none focus:border-orange-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-zinc-800 pt-4">
-              <h3 className="text-sm font-bold text-zinc-400 mb-2 uppercase">Detalle del Pedido</h3>
-              <div className="space-y-2">
-                {cart.map((item, index) => (
-                  <div key={item.cartId} className="flex justify-between items-center bg-zinc-900/50 p-3 rounded-lg border border-zinc-800">
-                    <div className="flex items-center gap-3">
-                      <span className="text-orange-500 font-bold text-sm">1x</span>
-                      <span>{item.title}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold">S/ {item.price}</span>
-                      <button onClick={() => removeFromCart(item.cartId)} className="text-red-500 p-1"><Trash2 size={16}/></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+          {/* ... resto del modal ... */}
           <div className="p-4 bg-zinc-900 border-t border-zinc-800">
-            <div className="flex justify-between items-center mb-4 text-xl font-bold">
-              <span>Total a Pagar:</span>
-              <span className="text-emerald-400">S/ {total.toFixed(2)}</span>
-            </div>
-            <button 
-              onClick={sendOrder}
-              disabled={loading}
-              className="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? "Enviando..." : <><Send size={20}/> CONFIRMAR PEDIDO</>}
-            </button>
+             <button onClick={sendOrder} disabled={loading} className="w-full bg-orange-600 hover:bg-orange-500 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50">
+               {loading ? "Enviando..." : <><Send size={20}/> CONFIRMAR PEDIDO</>}
+             </button>
           </div>
-
         </div>
       )}
     </div>
