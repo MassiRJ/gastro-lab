@@ -1,31 +1,37 @@
-'use server' 
-// 👆 Esa primera línea es MAGIA. Convierte este archivo en código seguro de servidor.
+'use server'
 
 import { createClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 
-// ⚠️ PEGA TUS CLAVES AQUÍ (Sí, otra vez, para asegurar que el servidor las tenga)
-const supabaseUrl = "https://dpjhsqwytgdircxnspff.supabase.co" 
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw"
+// TUS CREDENCIALES
+const URL = "https://dpjhsqwytgdircxnspff.supabase.co"
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwamhzcXd5dGdkaXJjeG5zcGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5OTg2OTEsImV4cCI6MjA4MTU3NDY5MX0.VMt2OpPuJllAPHHQN_eeD1gY-MIVWof6e_ao-XsKVGw"
+const supabase = createClient(URL, KEY)
 
-const supabase = createClient(supabaseUrl, supabaseKey)
-
-export async function marcarComoListo(id) {
-  console.log("🚀 Servidor recibiendo orden ID:", id)
-
-  // Esto se ejecuta en Vercel, NO en el navegador del cliente.
-  // Aquí no existe AdBlock, ni CORS, ni fallos de fetch.
+// FUNCION 1: COCINA -> MESA ATENDIDA
+export async function marcarPedidoAtendido(id) {
   const { error } = await supabase
     .from('orders')
-    .update({ status: 'listo' })
+    .update({ status: 'atendido' }) // Cambia estado, no borra
     .eq('id', id)
 
-  if (error) {
-    console.error("Error en servidor:", error)
-    throw new Error(error.message)
-  }
-
-  // Esto avisa a la página que los datos cambiaron para que se refresque sola
+  if (error) throw new Error(error.message)
   revalidatePath('/cocina')
+  revalidatePath('/caja') // Avisa a la caja que hay una mesa lista
+  return { success: true }
+}
+
+// FUNCION 2: CAJA -> COBRAR Y CERRAR
+export async function cobrarPedido(id) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ 
+      status: 'pagado', 
+      payment_status: 'paid' 
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/caja')
   return { success: true }
 }
