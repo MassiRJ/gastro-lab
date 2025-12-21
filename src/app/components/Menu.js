@@ -2,15 +2,15 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-// FIX: Añadimos un valor por defecto "items = []" para evitar el error de "undefined"
-export default function Menu({ items = [], onAddToCart }) {
+export default function Menu({ items, onAddToCart }) {
   const categories = ["Entradas", "Fondos", "Bebidas"];
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // FIX: Seguridad extra (items || []) para asegurar que siempre sea un array
-  const safeItems = Array.isArray(items) ? items : [];
-  
-  const filteredItems = safeItems.filter(item => item.category === activeCategory);
+  // 🛡️ PROTECCIÓN SUPREMA:
+  // 1. Usamos (items || []) para asegurar que sea un array
+  // 2. Usamos el operador ?.filter por si acaso sigue siendo null
+  const safeList = items || [];
+  const filteredItems = safeList?.filter ? safeList.filter(item => item.category === activeCategory) : [];
 
   return (
     <section id="menu" className="py-20 px-4 max-w-7xl mx-auto min-h-screen">
@@ -39,8 +39,8 @@ export default function Menu({ items = [], onAddToCart }) {
       {/* GRILLA */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in zoom-in duration-300">
         {filteredItems.length === 0 ? (
-           <div className="col-span-full text-center py-10 text-gray-500">
-             No hay platos disponibles en esta categoría.
+           <div className="col-span-full text-center py-10 text-gray-500 border border-dashed border-zinc-800 rounded-xl">
+             <p>Cargando carta o sin platos disponibles...</p>
            </div>
         ) : (
           filteredItems.map((item) => (
@@ -48,10 +48,10 @@ export default function Menu({ items = [], onAddToCart }) {
               <div className="h-48 bg-zinc-800 relative overflow-hidden flex items-center justify-center">
                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"/>
                  <span className="text-6xl font-black text-zinc-700 group-hover:text-zinc-600 transition-colors z-0">
-                   {item.title.charAt(0)}
+                   {item.title ? item.title.charAt(0) : "G"}
                  </span>
                  <span className="absolute bottom-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-emerald-400 font-bold border border-emerald-500/30">
-                   S/ {item.price.toFixed(2)}
+                   S/ {(item.price || 0).toFixed(2)}
                  </span>
               </div>
               

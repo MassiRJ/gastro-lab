@@ -1,11 +1,11 @@
-// VERSION FINAL MOZO - CONFIRMADA
+// VERSION MOZO SEGURA
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, Plus, Minus, ChefHat, Send, Trash2, Utensils, User, MapPin, X } from "lucide-react";
+import { ShoppingCart, Plus, ChefHat, Send, Trash2, Utensils, User, MapPin, X } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
-// --- TU MENÚ ---
+// DATOS FIJOS PARA EVITAR "UNDEFINED"
 const MENU_ITEMS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
@@ -99,6 +99,7 @@ export default function WaiterView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+        {/* USAMOS EL FILTRO CON SEGURIDAD AQUI TAMBIEN */}
         {MENU_ITEMS.filter(item => item.category === activeCategory).map(item => (
           <div key={item.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex justify-between items-center active:scale-95 transition-transform">
             <div>
@@ -114,7 +115,8 @@ export default function WaiterView() {
           </div>
         ))}
       </div>
-
+      
+      {/* ... (El resto del carrito sigue igual) ... */}
       {cart.length > 0 && (
         <div className="fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-4 pb-8 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-300">
           <div className="max-w-4xl mx-auto flex justify-between items-center">
