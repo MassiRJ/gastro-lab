@@ -1,163 +1,148 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// 👇 AQUI FALTABA IMPORTAR CheckCircle, YA ESTA AGREGADO
-import { DollarSign, TrendingUp, CreditCard, Calendar, Wallet, Utensils, MapPin, CheckCircle } from "lucide-react";
+import { DollarSign, CreditCard, Receipt, Smartphone, Check, X, Printer } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import { cobrarPedido } from "../cocina/actions"; // Reusamos el archivo de acciones
 
 export default function CashierView() {
-  const [session, setSession] = useState(null);
-  const [transactions, setTransactions] = useState([]);
-  const [totalSales, setTotalSales] = useState(0);
-  
-  // Login States
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null); // Para el voucher
 
-  useEffect(() => { checkSession(); }, []);
+  useEffect(() => {
+    fetchPendingPayments();
+    // Escuchar cambios en tiempo real desde cocina
+    const channel = supabase.channel('caja_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchPendingPayments)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
-  const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setSession(session);
-    setLoading(false);
-    if (session) fetchTransactions();
+  const fetchPendingPayments = async () => {
+    // Traemos todo lo que NO esté pagado ('pendiente' o 'atendido')
+    // Pero principalmente nos interesa 'atendido' que es cuando ya comieron
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .neq('status', 'pagado') 
+      .order("created_at", { ascending: false });
+    if (data) setOrders(data);
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) { setSession(data.session); fetchTransactions(); }
+  const handleCobrar = async (order) => {
+    setSelectedOrder(order); // Abre el modal de voucher
   };
 
-  const fetchTransactions = async () => {
+  const confirmPayment = async () => {
+    if (!selectedOrder) return;
     try {
-      // Leemos de sales_history (donde cocina manda los pedidos terminados)
-      const { data, error } = await supabase
-        .from("sales_history")
-        .select("*")
-        .order("created_at", { ascending: false });
-        
-      if (error) throw error;
-
-      if (data) {
-        setTransactions(data);
-        // Sumamos el total de forma segura (si es null suma 0)
-        const total = data.reduce((sum, item) => sum + (item.total_price || 0), 0);
-        setTotalSales(total);
-      }
-    } catch (err) {
-      console.error("Error cargando caja:", err);
+      await cobrarPedido(selectedOrder.id);
+      alert("✅ Pago registrado y mesa liberada");
+      setSelectedOrder(null);
+      fetchPendingPayments(); // Refrescar lista
+    } catch (error) {
+      alert("Error: " + error.message);
     }
   };
 
-  const Background = () => (
-    <div className="fixed inset-0 -z-10 bg-gradient-to-br from-emerald-900 via-teal-900 to-green-950">
-      <div className="absolute top-0 left-0 w-full h-full bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
-    </div>
-  );
+  // Función para determinar el estado visual
+  const getStatusBadge = (order) => {
+    const isYape = order.payment_method?.toLowerCase().includes('yape') || order.payment_method?.toLowerCase().includes('transfer');
+    
+    if (isYape) {
+      return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-500/50 flex items-center gap-1"><Smartphone size={12}/> Verificar App</span>;
+    }
+    return <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs border border-red-500/50 flex items-center gap-1"><DollarSign size={12}/> Cobrar en Caja</span>;
+  };
 
-  if (loading) return <div className="min-h-screen bg-black text-white flex items-center justify-center">Cargando Caja...</div>;
-
-  // --- LOGIN CAJA ---
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-        <Background />
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 p-8 rounded-3xl shadow-2xl w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-tr from-emerald-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg transform rotate-3">
-              <DollarSign className="text-white" size={40} />
-            </div>
-            <h1 className="text-3xl font-bold text-white">Caja & Finanzas</h1>
-            <p className="text-emerald-200 text-sm mt-2">Control de Ventas Diarias</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/40 focus:border-emerald-500 outline-none" placeholder="admin@gastrolab.com" />
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-black/30 border border-white/10 rounded-xl p-4 text-white placeholder-white/40 focus:border-emerald-500 outline-none" placeholder="******" />
-            <button type="submit" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-emerald-500/30">Abrir Caja</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // --- DASHBOARD CAJA ---
   return (
-    <div className="min-h-screen p-4 md:p-8 relative overflow-hidden text-white">
-      <Background />
-      <div className="max-w-6xl mx-auto relative z-10">
-        
-        {/* TARJETA RESUMEN SUPERIOR */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="md:col-span-2 backdrop-blur-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 p-8 rounded-3xl relative overflow-hidden">
-            <div className="relative z-10">
-              <p className="text-emerald-200 font-medium mb-1">Ventas Totales (Pedidos Cerrados)</p>
-              <h2 className="text-5xl md:text-6xl font-bold text-white tracking-tight">
-                S/ {totalSales.toFixed(2)}
-              </h2>
-            </div>
-            <div className="absolute right-0 bottom-0 opacity-20 transform translate-x-10 translate-y-10">
-              <DollarSign size={200} />
-            </div>
-          </div>
-
-          <div className="backdrop-blur-xl bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col justify-center items-center text-center">
-            <div className="bg-white/10 p-4 rounded-full mb-4">
-              <Utensils className="text-emerald-400" size={32} />
-            </div>
-            <h3 className="text-3xl font-bold">{transactions.length}</h3>
-            <p className="text-white/50">Pedidos Despachados</p>
-          </div>
+    <div className="min-h-screen p-6 text-white bg-zinc-950 relative">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold flex items-center gap-3"><Receipt className="text-emerald-500" /> Caja</h1>
+        <div className="bg-emerald-900/50 px-4 py-2 rounded-lg border border-emerald-500/30">
+          <span className="text-emerald-400 font-bold">{orders.length}</span> Mesas por cobrar
         </div>
+      </header>
 
-        {/* LISTA DE TRANSACCIONES */}
-        <div className="backdrop-blur-xl bg-black/20 border border-white/10 rounded-3xl overflow-hidden">
-          <div className="p-6 border-b border-white/10 flex justify-between items-center">
-            <h3 className="text-xl font-bold flex items-center gap-2">
-              <Wallet className="text-emerald-400" /> Historial de Ventas
-            </h3>
-            <button onClick={fetchTransactions} className="text-xs bg-white/10 px-3 py-1 rounded hover:bg-white/20">Actualizar</button>
-          </div>
-          
-          <div className="divide-y divide-white/10">
-            {transactions.length === 0 ? (
-                <div className="p-8 text-center text-white/40">No hay ventas registradas aún.</div>
-            ) : (
-                transactions.map((tx) => (
-                <div key={tx.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors gap-4">
-                    <div className="flex items-center gap-4">
-                    <div className="bg-emerald-500/10 p-3 rounded-xl text-emerald-400 hidden md:block">
-                        <CheckCircle size={20} />
-                    </div>
-                    <div>
-                        <p className="font-bold text-white flex items-center gap-2">
-                            <MapPin size={16} className="text-yellow-400"/> Mesa {tx.table_number || "?"}
-                        </p>
-                        <p className="text-sm text-white/40 flex items-center gap-2">
-                        <Calendar size={12} /> 
-                        {tx.created_at ? new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
-                        <span className="text-white/20">|</span> ID: #{tx.id}
-                        </p>
-                        {/* Mostrar resumen de items CON PROTECCIÓN ANTI-ERROR */}
-                        <div className="text-xs text-white/60 mt-1">
-                            {tx.items && Array.isArray(tx.items) ? tx.items.map(i => i.title).join(", ") : "Sin detalles"}
-                        </div>
-                    </div>
-                    </div>
-                    <div className="text-right flex flex-row md:flex-col justify-between items-center md:items-end">
-                    <p className="font-bold text-emerald-400 text-xl">+ S/ {(tx.total_price || 0).toFixed(2)}</p>
-                    <p className="text-xs text-white/30 uppercase bg-white/10 px-2 py-1 rounded mt-1">
-                        {tx.payment_method || "Efectivo"}
-                    </p>
-                    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {orders.map((order) => (
+          <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-white">Mesa {order.table_number}</h3>
+                <p className="text-zinc-400 text-sm">Mozo: {order.waiter_name || "General"}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-emerald-400">S/ {(order.total_price || 0).toFixed(2)}</p>
+                {getStatusBadge(order)}
+              </div>
+            </div>
+
+            <div className="bg-zinc-950/50 p-3 rounded-lg mb-4 text-sm text-zinc-300 max-h-32 overflow-y-auto">
+              {order.items?.map((item, i) => (
+                <div key={i} className="flex justify-between border-b border-zinc-800/50 last:border-0 py-1">
+                  <span>{item.title}</span>
+                  <span>S/ {item.price}</span>
                 </div>
-                ))
-            )}
+              ))}
+            </div>
+
+            <div className="flex gap-2 items-center text-sm text-zinc-500 mb-4">
+              Estado cocina: 
+              <span className={`uppercase font-bold ${order.status === 'atendido' ? 'text-green-500' : 'text-orange-500'}`}>
+                {order.status}
+              </span>
+            </div>
+
+            <button 
+              onClick={() => handleCobrar(order)}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+            >
+              <CreditCard size={18} /> Procesar Pago
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* --- MODAL DE VOUCHER --- */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white text-black p-6 rounded-lg w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
+            <div className="text-center border-b-2 border-dashed border-zinc-300 pb-4 mb-4">
+              <h2 className="text-2xl font-bold uppercase">Gastro Lab</h2>
+              <p className="text-xs text-zinc-500">RUC: 20123456789</p>
+              <p className="text-xs text-zinc-500">Ticket #{selectedOrder.id.toString().slice(-6)}</p>
+            </div>
+
+            <div className="space-y-2 mb-4 text-sm font-mono">
+              <div className="flex justify-between"><span>Mesa:</span> <span>{selectedOrder.table_number}</span></div>
+              <div className="flex justify-between"><span>Fecha:</span> <span>{new Date().toLocaleDateString()}</span></div>
+              <hr className="border-dashed border-zinc-300 my-2"/>
+              {selectedOrder.items.map((item, i) => (
+                 <div key={i} className="flex justify-between">
+                   <span>{item.title}</span>
+                   <span>{item.price}</span>
+                 </div>
+              ))}
+              <hr className="border-zinc-800 my-2"/>
+              <div className="flex justify-between text-xl font-bold">
+                <span>TOTAL:</span>
+                <span>S/ {selectedOrder.total_price.toFixed(2)}</span>
+              </div>
+              <div className="text-center mt-2 text-xs bg-zinc-100 p-1 rounded">
+                Método: {selectedOrder.payment_method?.toUpperCase()}
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button onClick={() => setSelectedOrder(null)} className="flex-1 border border-zinc-300 py-3 rounded font-bold hover:bg-zinc-100">Cancelar</button>
+              <button onClick={confirmPayment} className="flex-1 bg-black text-white py-3 rounded font-bold flex items-center justify-center gap-2 hover:bg-zinc-800">
+                <Printer size={18}/> Emitir & Cerrar
+              </button>
+            </div>
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }
