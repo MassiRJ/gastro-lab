@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, TrendingUp, CreditCard, Calendar, Lock, Wallet, Utensils, MapPin } from "lucide-react";
+// 👇 AQUI FALTABA IMPORTAR CheckCircle, YA ESTA AGREGADO
+import { DollarSign, TrendingUp, CreditCard, Calendar, Wallet, Utensils, MapPin, CheckCircle } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CashierView() {
@@ -30,18 +31,23 @@ export default function CashierView() {
   };
 
   const fetchTransactions = async () => {
-    // ⚠️ CAMBIO CLAVE: Leemos 'sales_history' (donde Cocina manda los pedidos borrados)
-    const { data } = await supabase
-      .from("sales_history")
-      .select("*")
-      .order("created_at", { ascending: false }); // Los más recientes primero
-      
-    if (data) {
-      setTransactions(data);
-      // Calcular total sumando la columna total_price
-      // (Si tu tabla no tiene total_price, asegúrate de que al crear el pedido se guarde ese dato)
-      const total = data.reduce((sum, item) => sum + (item.total_price || 0), 0);
-      setTotalSales(total);
+    try {
+      // Leemos de sales_history (donde cocina manda los pedidos terminados)
+      const { data, error } = await supabase
+        .from("sales_history")
+        .select("*")
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+
+      if (data) {
+        setTransactions(data);
+        // Sumamos el total de forma segura (si es null suma 0)
+        const total = data.reduce((sum, item) => sum + (item.total_price || 0), 0);
+        setTotalSales(total);
+      }
+    } catch (err) {
+      console.error("Error cargando caja:", err);
     }
   };
 
@@ -116,7 +122,7 @@ export default function CashierView() {
           
           <div className="divide-y divide-white/10">
             {transactions.length === 0 ? (
-                <div className="p-8 text-center text-white/40">No hay ventas registradas hoy.</div>
+                <div className="p-8 text-center text-white/40">No hay ventas registradas aún.</div>
             ) : (
                 transactions.map((tx) => (
                 <div key={tx.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-white/5 transition-colors gap-4">
@@ -126,21 +132,21 @@ export default function CashierView() {
                     </div>
                     <div>
                         <p className="font-bold text-white flex items-center gap-2">
-                            <MapPin size={16} className="text-yellow-400"/> Mesa {tx.table_number}
+                            <MapPin size={16} className="text-yellow-400"/> Mesa {tx.table_number || "?"}
                         </p>
                         <p className="text-sm text-white/40 flex items-center gap-2">
                         <Calendar size={12} /> 
-                        {new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        {tx.created_at ? new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                         <span className="text-white/20">|</span> ID: #{tx.id}
                         </p>
-                        {/* Mostrar resumen de items si existen */}
+                        {/* Mostrar resumen de items CON PROTECCIÓN ANTI-ERROR */}
                         <div className="text-xs text-white/60 mt-1">
-                            {tx.items && Array.isArray(tx.items) && tx.items.map(i => i.title).join(", ")}
+                            {tx.items && Array.isArray(tx.items) ? tx.items.map(i => i.title).join(", ") : "Sin detalles"}
                         </div>
                     </div>
                     </div>
                     <div className="text-right flex flex-row md:flex-col justify-between items-center md:items-end">
-                    <p className="font-bold text-emerald-400 text-xl">+ S/ {tx.total_price ? tx.total_price.toFixed(2) : '0.00'}</p>
+                    <p className="font-bold text-emerald-400 text-xl">+ S/ {(tx.total_price || 0).toFixed(2)}</p>
                     <p className="text-xs text-white/30 uppercase bg-white/10 px-2 py-1 rounded mt-1">
                         {tx.payment_method || "Efectivo"}
                     </p>
