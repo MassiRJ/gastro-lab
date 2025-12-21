@@ -1,103 +1,83 @@
 "use client";
 
-import { useState, useEffect } from "react"; 
+import { useState, useEffect } from "react";
+// Importamos todos los componentes que creaste
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Reservation from "./components/Reservation";
 import Footer from "./components/Footer";
-import CartSidebar from "./components/CartSidebar"; 
-import Testimonials from "./components/Testimonials"; 
-import Features from "./components/Features"; 
-import Toast from "./components/Toast"; // <--- 1. IMPORTAMOS EL TOAST
+import CartSidebar from "./components/CartSidebar";
+import Testimonials from "./components/Testimonials";
+import Features from "./components/Features";
+import Toast from "./components/Toast";
+
+// Datos del Menú (Simulados para la Landing Page)
+const MENU_ITEMS = [
+  { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
+  { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
+  { id: 3, category: "Fondos", title: "Lomo Saltado", price: 45.00 },
+  { id: 4, category: "Fondos", title: "Ají de Gallina", price: 30.00 },
+  { id: 5, category: "Bebidas", title: "Chicha Morada", price: 15.00 },
+  { id: 6, category: "Bebidas", title: "Pisco Sour", price: 25.00 },
+];
 
 export default function Home() {
-  const [cart, setCart] = useState([]); 
-  const [isCartOpen, setIsCartOpen] = useState(false); 
-  
-  // --- ESTADO PARA LA NOTIFICACIÓN ---
-  const [toast, setToast] = useState({ show: false, message: "" });
+  const [cart, setCart] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
-  // Lógica de Auto-Scroll (QR)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const mesaParam = params.get("mesa");
-      if (mesaParam) {
-        setTimeout(() => {
-          const menuSection = document.getElementById("menu");
-          if (menuSection) menuSection.scrollIntoView({ behavior: "smooth" });
-        }, 500);
-      }
-    }
-  }, []);
-
-  // --- FUNCIÓN AGREGAR MEJORADA (UX) ---
-  const addToCart = (product) => {
-    setCart([...cart, product]);
-    
-    // CAMBIO CLAVE: YA NO ABRIMOS EL CARRITO AUTOMÁTICAMENTE
-    // setIsCartOpen(true); <--- Eliminado
-    
-    // EN SU LUGAR, MOSTRAMOS EL TOAST
-    setToast({ show: true, message: `Has agregado: ${product.title}` });
-
-    // Ocultamos el toast después de 2.5 segundos
-    setTimeout(() => {
-      setToast({ show: false, message: "" });
-    }, 2500);
+  // Función para agregar al carrito
+  const addToCart = (item) => {
+    setCart((prev) => [...prev, { ...item, cartId: Math.random() }]);
+    setToastMessage(`Agregado: ${item.title}`);
   };
 
-  const removeFromCart = (indexToRemove) => {
-    setCart(cart.filter((_, index) => index !== indexToRemove));
-  };
-
-  // --- AGREGA ESTA FUNCIÓN NUEVA ---
-  const clearCart = () => {
-    setCart([]); // Vacia el estado
-    localStorage.removeItem("gastro_cart"); // Borra la memoria del navegador
+  // Función para eliminar del carrito
+  const removeFromCart = (cartId) => {
+    setCart((prev) => prev.filter((item) => item.cartId !== cartId));
   };
 
   return (
-    <main className="bg-black min-h-screen">
-      {/* Notificación Flotante */}
-      <Toast 
-        isVisible={toast.show} 
-        message={toast.message} 
-        onClose={() => setToast({ ...toast, show: false })}
-      />
-
+    <main className="bg-black min-h-screen text-white selection:bg-emerald-500 selection:text-white">
+      {/* 1. Barra de Navegación */}
       <Navbar 
         cartCount={cart.length} 
         onOpenCart={() => setIsCartOpen(true)} 
       />
-      
-      <CartSidebar 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        cartItems={cart}
-        onRemoveItem={removeFromCart}
-      />
 
+      {/* 2. Hero (Portada) */}
       <Hero />
+
+      {/* 3. Características */}
       <Features />
 
-      <div className="relative z-20 bg-zinc-950">
-        <Menu onAddToCart={addToCart} />
-      </div>
+      {/* 4. Menú */}
+      <Menu items={MENU_ITEMS} onAddToCart={addToCart} />
 
+      {/* 5. Testimonios */}
       <Testimonials />
+
+      {/* 6. Reservas */}
       <Reservation />
+
+      {/* 7. Footer */}
       <Footer />
-      {/* --- AQUÍ CONECTAMOS LA FUNCIÓN --- */}
+
+      {/* 8. Componentes Flotantes (Carrito y Notificaciones) */}
       <CartSidebar 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
         cartItems={cart} 
-        onRemoveItem={removeFromCart}
-        onClearCart={clearCart} // <--- ¡ESTO ES LO QUE FALTA!
+        onRemoveItem={removeFromCart} 
       />
+      
+      {toastMessage && (
+        <Toast 
+          message={toastMessage} 
+          onClose={() => setToastMessage("")} 
+        />
+      )}
     </main>
   );
 }
-// Actualización forzada
