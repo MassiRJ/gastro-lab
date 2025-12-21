@@ -1,37 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar, User } from "lucide-react";
+import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar, User, Eye, Users, Clock, Mail, Phone } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CashierView() {
-  // Estados para Cobro
+  // Estados Cobro
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null); 
   const [loadingPay, setLoadingPay] = useState(false);
 
-  // Estados para Reporte (Histórico)
+  // Estados Reporte
   const [showReport, setShowReport] = useState(false);
-  const [salesHistory, setSalesHistory] = useState([]); // Aquí mezclaremos Pedidos + Reservas
+  const [salesHistory, setSalesHistory] = useState([]);
   const [reportTotal, setReportTotal] = useState(0);
   const [paymentBreakdown, setPaymentBreakdown] = useState({ efectivo: 0, yape: 0 });
-  
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // NUEVO: Estado para ver el detalle individual
+  const [viewDetail, setViewDetail] = useState(null);
 
   useEffect(() => {
     fetchPendingPayments();
-
     const channel = supabase.channel('caja_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, updateData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, updateData)
       .subscribe();
-    
     const interval = setInterval(fetchPendingPayments, 3000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [showReport, selectedDate]);
 
   const updateData = () => {
@@ -39,121 +35,74 @@ export default function CashierView() {
     if (showReport) fetchDailyReport();
   };
 
-  // Si cambia la fecha, recargamos reporte
-  useEffect(() => {
-    if (showReport) fetchDailyReport();
-  }, [selectedDate]);
+  useEffect(() => { if (showReport) fetchDailyReport(); }, [selectedDate]);
 
-  // --- LOGICA COBRO (Solo Pedidos de Cocina) ---
+  // --- LOGICA COBRO ---
   const fetchPendingPayments = async () => {
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .neq('status', 'pagado') 
-      .order("created_at", { ascending: false });
+    const { data } = await supabase.from("orders").select("*").neq('status', 'pagado').order("created_at", { ascending: false });
     if (data) setOrders(data);
   };
-
-  const handleCobrar = (order) => { setSelectedOrder(order); };
-
+  const handleCobrar = (order) => setSelectedOrder(order);
   const confirmPaymentAndPrint = async () => {
     if (!selectedOrder) return;
     setLoadingPay(true);
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'pagado' })
-        .eq('id', selectedOrder.id);
-
+      const { error } = await supabase.from('orders').update({ status: 'pagado' }).eq('id', selectedOrder.id);
       if (error) throw error;
-
-      setTimeout(() => {
-        window.print(); 
-        alert("✅ Pago registrado y Ticket enviado");
-        setSelectedOrder(null);
-        fetchPendingPayments(); 
-      }, 500);
-    } catch (error) {
-      alert("Error: " + error.message);
-    } finally {
-      setLoadingPay(false);
-    }
+      setTimeout(() => { window.print(); alert("✅ Pago registrado"); setSelectedOrder(null); fetchPendingPayments(); }, 500);
+    } catch (error) { alert("Error: " + error.message); } finally { setLoadingPay(false); }
   };
 
-  // --- LOGICA REPORTE (FUSIÓN PEDIDOS + RESERVAS) 🧠 ---
+  // --- LOGICA REPORTE (Con Detalles Extra) ---
   const fetchDailyReport = async () => {
     const [year, month, day] = selectedDate.split('-').map(Number);
     const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
     const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
 
-    // 1. Traer PEDIDOS de Comida (Orders)
-    const { data: ordersData } = await supabase
-      .from("orders")
-      .select("*")
-      .eq('status', 'pagado')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
-
-    // 2. Traer RESERVAS (Garantías)
-    // Asumimos que la reserva se paga el día que se crea (o podrías filtrar por fecha de reserva)
-    const { data: reservData } = await supabase
-      .from("reservations")
-      .select("*")
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+    const { data: ordersData } = await supabase.from("orders").select("*").eq('status', 'pagado').gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString());
+    const { data: reservData } = await supabase.from("reservations").select("*").gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString());
 
     const validOrders = ordersData || [];
     const validReservs = reservData || [];
 
-    // 3. Unificar todo en una sola lista para el reporte
-    // Formateamos las reservas para que parezcan pedidos en la tabla
+    // Mapeamos reservas guardando TODOS los datos necesarios para el detalle
     const formattedReservs = validReservs.map(res => ({
-      id: `R-${res.id}`, // ID especial para diferenciar
+      id: `R-${res.id}`,
       created_at: res.created_at,
       table_number: "RESERVA WEB",
-      total_price: res.paid_amount || 0, // Aquí va la garantía (50 soles)
-      payment_method: 'Yape/Plin', // Las reservas web suelen ser digitales
+      total_price: res.paid_amount || 0,
+      payment_method: 'Yape/Plin',
       type: 'reserva',
-      client_name: res.name
+      // Datos extra para el detalle:
+      client_name: res.name,
+      res_date: res.date,
+      res_time: res.time,
+      res_guests: res.guests,
+      res_email: res.email,
+      res_phone: res.phone
     }));
 
-    // Juntamos todo
     const combinedData = [...validOrders, ...formattedReservs];
-    
-    // Ordenar por hora
     combinedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
     setSalesHistory(combinedData);
 
-    // Calcular Totales
     const total = combinedData.reduce((sum, item) => sum + (item.total_price || 0), 0);
     setReportTotal(total);
 
-    // Desglose
     const breakdown = combinedData.reduce((acc, item) => {
       const method = item.payment_method?.toLowerCase() || 'efectivo';
-      if (method.includes('yape') || method.includes('transfer') || method.includes('plin')) {
-        acc.yape += (item.total_price || 0);
-      } else {
-        acc.efectivo += (item.total_price || 0);
-      }
+      if (method.includes('yape') || method.includes('transfer') || method.includes('plin')) { acc.yape += (item.total_price || 0); } 
+      else { acc.efectivo += (item.total_price || 0); }
       return acc;
     }, { efectivo: 0, yape: 0 });
-    
     setPaymentBreakdown(breakdown);
   };
 
-  const openReport = () => {
-    setShowReport(true);
-    fetchDailyReport();
-  };
-
-  // --- UTILIDADES ---
+  const openReport = () => { setShowReport(true); fetchDailyReport(); };
   const formatTable = (tableName) => tableName?.toString().toLowerCase().includes('mesa') ? tableName : `Mesa ${tableName}`;
-  
   const getStatusBadge = (order) => {
     const isYape = order.payment_method?.toLowerCase().includes('yape');
-    if (isYape) return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-500/50 flex items-center gap-1"><Smartphone size={12}/> Yape/Plin</span>;
+    if (isYape) return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-500/50 flex items-center gap-1"><Smartphone size={12}/> Yape/App</span>;
     return <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs border border-red-500/50 flex items-center gap-1"><DollarSign size={12}/> Efectivo</span>;
   };
 
@@ -173,20 +122,13 @@ export default function CashierView() {
       <header className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-3"><Receipt className="text-emerald-500" /> Caja</h1>
         <div className="flex gap-4">
-            <button onClick={openReport} className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg border border-zinc-700 flex items-center gap-2 font-bold transition-all">
-                <FileText size={18} /> Reportes / Cierre
-            </button>
-            <div className="bg-emerald-900/50 px-4 py-2 rounded-lg border border-emerald-500/30">
-                <span className="text-emerald-400 font-bold">{orders.length}</span> Pendientes
-            </div>
+            <button onClick={openReport} className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg border border-zinc-700 flex items-center gap-2 font-bold transition-all"><FileText size={18} /> Cierre / Reportes</button>
+            <div className="bg-emerald-900/50 px-4 py-2 rounded-lg border border-emerald-500/30"><span className="text-emerald-400 font-bold">{orders.length}</span> Pendientes</div>
         </div>
       </header>
 
-      {/* --- LISTA DE PENDIENTES (Solo Comida) --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.length === 0 ? (
-            <div className="col-span-full text-center py-20 text-zinc-500"><p>No hay mesas pendientes de cobro.</p></div>
-        ) : (
+        {orders.length === 0 ? (<div className="col-span-full text-center py-20 text-zinc-500"><p>No hay mesas pendientes de cobro.</p></div>) : (
             orders.map((order) => (
             <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all animate-in fade-in zoom-in duration-300">
                 <div className="flex justify-between items-start mb-4">
@@ -202,7 +144,7 @@ export default function CashierView() {
         )}
       </div>
 
-      {/* --- MODAL VOUCHER --- */}
+      {/* --- MODAL VOUCHER (COBRO) --- */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div id="printable-voucher" className="bg-white text-black p-6 rounded-lg w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
@@ -227,10 +169,10 @@ export default function CashierView() {
         </div>
       )}
 
-      {/* --- MODAL REPORTE HISTÓRICO (AHORA CON RESERVAS) --- */}
+      {/* --- MODAL REPORTE HISTÓRICO --- */}
       {showReport && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-zinc-900 w-full max-w-2xl h-[90vh] rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 border border-zinc-800">
+          <div className="bg-zinc-900 w-full max-w-3xl h-[90vh] rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 border border-zinc-800 relative">
             
             <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-2xl">
                 <div className="flex items-center gap-4">
@@ -244,11 +186,7 @@ export default function CashierView() {
             </div>
 
             <div id="printable-report" className="flex-1 overflow-y-auto p-6 space-y-6 text-black bg-white md:bg-transparent md:text-white">
-                <div className="text-center md:hidden block mb-4 border-b pb-2">
-                    <h2 className="text-xl font-bold">REPORTE DE CIERRE</h2>
-                    <p>Fecha: {selectedDate}</p>
-                </div>
-
+                <div className="text-center md:hidden block mb-4 border-b pb-2"><h2 className="text-xl font-bold">REPORTE DE CIERRE</h2><p>Fecha: {selectedDate}</p></div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-emerald-600/20 border border-emerald-500/50 p-4 rounded-xl text-center md:text-white text-black border-black/10 md:border-emerald-500/50 bg-gray-100 md:bg-emerald-600/20">
                         <p className="text-sm opacity-70">Total Ingresos</p>
@@ -262,34 +200,38 @@ export default function CashierView() {
 
                 <div>
                     <h3 className="font-bold mb-4 border-b pb-2 md:text-white text-black">Detalle de Operaciones ({salesHistory.length})</h3>
-                    {salesHistory.length === 0 ? (
-                      <p className="text-center text-zinc-500 py-4">No se encontraron movimientos.</p>
-                    ) : (
-                      <table className="w-full text-sm text-left md:text-white text-black">
+                    {salesHistory.length === 0 ? (<p className="text-center text-zinc-500 py-4">No se encontraron movimientos.</p>) : (
+                      <table className="w-full text-sm text-left md:text-white text-black border-collapse">
                           <thead>
                               <tr className="border-b border-zinc-700 opacity-50">
                                   <th className="pb-2">Hora</th>
                                   <th className="pb-2">Origen</th>
                                   <th className="pb-2">Total</th>
                                   <th className="pb-2 text-right">Método</th>
+                                  <th className="pb-2 text-center">Info</th> {/* Columna Botón */}
                               </tr>
                           </thead>
                           <tbody>
                               {salesHistory.map((tx) => (
-                                  <tr key={tx.id} className="border-b border-zinc-800/50">
+                                  <tr key={tx.id} className="border-b border-zinc-800/50 hover:bg-white/5 transition-colors">
                                       <td className="py-2">{new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                                      
-                                      {/* Diferenciamos visualmente Reservas de Pedidos */}
                                       <td className="py-2 flex items-center gap-2">
-                                        {tx.type === 'reserva' ? (
-                                            <><User size={14} className="text-blue-400"/> {tx.client_name || "Reserva Web"}</>
-                                        ) : (
-                                            <><MapPin size={14} className="text-yellow-400"/> {formatTable(tx.table_number)}</>
-                                        )}
+                                        {tx.type === 'reserva' ? (<><User size={14} className="text-blue-400"/> {tx.client_name || "Reserva Web"}</>) 
+                                        : (<><MapPin size={14} className="text-yellow-400"/> {formatTable(tx.table_number)}</>)}
                                       </td>
-                                      
                                       <td className="py-2 font-bold">S/ {tx.total_price.toFixed(2)}</td>
                                       <td className="py-2 text-right uppercase text-xs">{tx.payment_method || "EFECTIVO"}</td>
+                                      
+                                      {/* BOTÓN OJO 👁️ */}
+                                      <td className="py-2 text-center">
+                                          <button 
+                                            onClick={() => setViewDetail(tx)} 
+                                            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-1.5 rounded-md transition-colors no-print border border-zinc-700"
+                                            title="Ver Detalles"
+                                          >
+                                            <Eye size={14}/>
+                                          </button>
+                                      </td>
                                   </tr>
                               ))}
                           </tbody>
@@ -300,10 +242,60 @@ export default function CashierView() {
 
             <div className="p-4 border-t border-zinc-800 flex justify-end gap-2 bg-zinc-900 rounded-b-2xl no-print">
                 <button onClick={() => setShowReport(false)} className="px-6 py-3 rounded-lg font-bold border border-zinc-700 hover:bg-zinc-800 text-white">Cerrar</button>
-                <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2">
-                    <Printer size={18}/> Imprimir Cierre
-                </button>
+                <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Printer size={18}/> Imprimir Reporte</button>
             </div>
+
+            {/* --- SUB-MODAL: DETALLE TRANSACCIÓN --- */}
+            {viewDetail && (
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-8 animate-in fade-in duration-200 rounded-2xl">
+                <div className="bg-zinc-950 border border-zinc-700 p-6 rounded-xl w-full max-w-sm shadow-2xl relative">
+                  <button onClick={() => setViewDetail(null)} className="absolute top-2 right-2 bg-zinc-800 p-1 rounded-full text-zinc-400 hover:text-white"><X size={16}/></button>
+                  
+                  {viewDetail.type === 'reserva' ? (
+                    // VISTA DETALLE RESERVA
+                    <div className="space-y-4">
+                       <h3 className="text-lg font-bold text-blue-400 flex items-center gap-2"><User size={20}/> Reserva Web</h3>
+                       <div className="space-y-2 text-sm text-zinc-300">
+                          <p><span className="text-zinc-500 block text-xs uppercase">Cliente:</span> {viewDetail.client_name}</p>
+                          <p><span className="text-zinc-500 block text-xs uppercase">Fecha Reserva:</span> <span className="flex items-center gap-1"><Calendar size={12}/> {viewDetail.res_date}</span></p>
+                          <p><span className="text-zinc-500 block text-xs uppercase">Hora:</span> <span className="flex items-center gap-1"><Clock size={12}/> {viewDetail.res_time}</span></p>
+                          <p><span className="text-zinc-500 block text-xs uppercase">Invitados:</span> <span className="flex items-center gap-1"><Users size={12}/> {viewDetail.res_guests} personas</span></p>
+                          <div className="border-t border-zinc-800 pt-2 mt-2">
+                             <p className="flex items-center gap-2 mb-1"><Mail size={12} className="text-zinc-500"/> {viewDetail.res_email}</p>
+                             <p className="flex items-center gap-2"><Phone size={12} className="text-zinc-500"/> {viewDetail.res_phone}</p>
+                          </div>
+                       </div>
+                    </div>
+                  ) : (
+                    // VISTA DETALLE PEDIDO MESA
+                    <div className="space-y-4">
+                       <h3 className="text-lg font-bold text-yellow-400 flex items-center gap-2"><MapPin size={20}/> {formatTable(viewDetail.table_number)}</h3>
+                       <p className="text-xs text-zinc-500">ID Venta: {viewDetail.id}</p>
+                       <div className="bg-zinc-900 rounded-lg p-3 max-h-60 overflow-y-auto">
+                          <p className="text-xs font-bold text-zinc-400 mb-2 uppercase">Consumo:</p>
+                          <ul className="space-y-2 text-sm">
+                            {viewDetail.items && viewDetail.items.map((item, i) => (
+                              <li key={i} className="flex justify-between border-b border-zinc-800 pb-1 last:border-0">
+                                <span>{item.title}</span>
+                                <span className="text-zinc-400">S/ {item.price}</span>
+                              </li>
+                            ))}
+                          </ul>
+                       </div>
+                       <div className="flex justify-between text-lg font-bold pt-2 border-t border-zinc-800">
+                          <span>Total Pagado:</span>
+                          <span>S/ {viewDetail.total_price.toFixed(2)}</span>
+                       </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-6">
+                    <button onClick={() => setViewDetail(null)} className="w-full bg-zinc-800 hover:bg-zinc-700 py-2 rounded font-bold text-sm">Cerrar Detalle</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
