@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar } from "lucide-react";
+import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar, User } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CashierView() {
@@ -12,25 +12,18 @@ export default function CashierView() {
 
   // Estados para Reporte (Histórico)
   const [showReport, setShowReport] = useState(false);
-  const [salesHistory, setSalesHistory] = useState([]);
+  const [salesHistory, setSalesHistory] = useState([]); // Aquí mezclaremos Pedidos + Reservas
   const [reportTotal, setReportTotal] = useState(0);
   const [paymentBreakdown, setPaymentBreakdown] = useState({ efectivo: 0, yape: 0 });
   
-  // FECHA SELECCIONADA (Por defecto HOY)
-  // Usamos el formato YYYY-MM-DD para el input tipo date
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchPendingPayments();
 
     const channel = supabase.channel('caja_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchPendingPayments();
-        // Si el reporte está abierto y es de HOY, actualízalo en tiempo real
-        if (showReport && selectedDate === new Date().toISOString().split('T')[0]) {
-            fetchDailyReport(); 
-        }
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, updateData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, updateData)
       .subscribe();
     
     const interval = setInterval(fetchPendingPayments, 3000);
@@ -41,12 +34,17 @@ export default function CashierView() {
     };
   }, [showReport, selectedDate]);
 
-  // Si cambia la fecha seleccionada en el reporte, recargamos los datos
+  const updateData = () => {
+    fetchPendingPayments();
+    if (showReport) fetchDailyReport();
+  };
+
+  // Si cambia la fecha, recargamos reporte
   useEffect(() => {
     if (showReport) fetchDailyReport();
   }, [selectedDate]);
 
-  // --- LOGICA COBRO ---
+  // --- LOGICA COBRO (Solo Pedidos de Cocina) ---
   const fetchPendingPayments = async () => {
     const { data } = await supabase
       .from("orders")
@@ -82,44 +80,70 @@ export default function CashierView() {
     }
   };
 
-  // --- LOGICA REPORTE HISTÓRICO ---
+  // --- LOGICA REPORTE (FUSIÓN PEDIDOS + RESERVAS) 🧠 ---
   const fetchDailyReport = async () => {
-    // Convertimos la fecha del input (YYYY-MM-DD) a rangos de tiempo
-    // Truco: creamos la fecha usando split para evitar problemas de zona horaria
     const [year, month, day] = selectedDate.split('-').map(Number);
-    
-    const startDate = new Date(year, month - 1, day, 0, 0, 0, 0); // 00:00:00
-    const endDate = new Date(year, month - 1, day, 23, 59, 59, 999); // 23:59:59
+    const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
 
-    const { data } = await supabase
+    // 1. Traer PEDIDOS de Comida (Orders)
+    const { data: ordersData } = await supabase
       .from("orders")
       .select("*")
       .eq('status', 'pagado')
-      .gte('created_at', startDate.toISOString()) // Desde las 00:00
-      .lte('created_at', endDate.toISOString())   // Hasta las 23:59
-      .order("created_at", { ascending: false });
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
-    if (data) {
-      setSalesHistory(data);
-      const total = data.reduce((sum, item) => sum + (item.total_price || 0), 0);
-      setReportTotal(total);
+    // 2. Traer RESERVAS (Garantías)
+    // Asumimos que la reserva se paga el día que se crea (o podrías filtrar por fecha de reserva)
+    const { data: reservData } = await supabase
+      .from("reservations")
+      .select("*")
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
-      const breakdown = data.reduce((acc, item) => {
-        const method = item.payment_method?.toLowerCase() || 'efectivo';
-        if (method.includes('yape') || method.includes('transfer')) {
-          acc.yape += (item.total_price || 0);
-        } else {
-          acc.efectivo += (item.total_price || 0);
-        }
-        return acc;
-      }, { efectivo: 0, yape: 0 });
-      setPaymentBreakdown(breakdown);
-    }
+    const validOrders = ordersData || [];
+    const validReservs = reservData || [];
+
+    // 3. Unificar todo en una sola lista para el reporte
+    // Formateamos las reservas para que parezcan pedidos en la tabla
+    const formattedReservs = validReservs.map(res => ({
+      id: `R-${res.id}`, // ID especial para diferenciar
+      created_at: res.created_at,
+      table_number: "RESERVA WEB",
+      total_price: res.paid_amount || 0, // Aquí va la garantía (50 soles)
+      payment_method: 'Yape/Plin', // Las reservas web suelen ser digitales
+      type: 'reserva',
+      client_name: res.name
+    }));
+
+    // Juntamos todo
+    const combinedData = [...validOrders, ...formattedReservs];
+    
+    // Ordenar por hora
+    combinedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    setSalesHistory(combinedData);
+
+    // Calcular Totales
+    const total = combinedData.reduce((sum, item) => sum + (item.total_price || 0), 0);
+    setReportTotal(total);
+
+    // Desglose
+    const breakdown = combinedData.reduce((acc, item) => {
+      const method = item.payment_method?.toLowerCase() || 'efectivo';
+      if (method.includes('yape') || method.includes('transfer') || method.includes('plin')) {
+        acc.yape += (item.total_price || 0);
+      } else {
+        acc.efectivo += (item.total_price || 0);
+      }
+      return acc;
+    }, { efectivo: 0, yape: 0 });
+    
+    setPaymentBreakdown(breakdown);
   };
 
   const openReport = () => {
-    // Al abrir, reseteamos a HOY por si acaso, o dejamos la última vista
-    // setSelectedDate(new Date().toISOString().split('T')[0]); 
     setShowReport(true);
     fetchDailyReport();
   };
@@ -158,6 +182,7 @@ export default function CashierView() {
         </div>
       </header>
 
+      {/* --- LISTA DE PENDIENTES (Solo Comida) --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {orders.length === 0 ? (
             <div className="col-span-full text-center py-20 text-zinc-500"><p>No hay mesas pendientes de cobro.</p></div>
@@ -183,7 +208,6 @@ export default function CashierView() {
           <div id="printable-voucher" className="bg-white text-black p-6 rounded-lg w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
             <div className="text-center border-b-2 border-dashed border-zinc-300 pb-4 mb-4">
               <h2 className="text-2xl font-bold uppercase">Gastro Lab</h2>
-              <p className="text-xs text-zinc-500">RUC: 20123456789</p>
               <p className="text-xs text-zinc-500">Ticket #{selectedOrder.id.toString().slice(-6)}</p>
             </div>
             <div className="space-y-2 mb-4 text-sm font-mono">
@@ -203,23 +227,17 @@ export default function CashierView() {
         </div>
       )}
 
-      {/* --- MODAL REPORTE HISTÓRICO --- */}
+      {/* --- MODAL REPORTE HISTÓRICO (AHORA CON RESERVAS) --- */}
       {showReport && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-zinc-900 w-full max-w-2xl h-[90vh] rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 border border-zinc-800">
             
             <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 rounded-t-2xl">
                 <div className="flex items-center gap-4">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2"><TrendingUp className="text-emerald-500"/> Reporte de Ventas</h2>
-                  {/* SELECTOR DE FECHA MÁGICO */}
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2"><TrendingUp className="text-emerald-500"/> Cierre de Caja</h2>
                   <div className="flex items-center gap-2 bg-black border border-zinc-700 px-3 py-1 rounded-lg">
                     <Calendar size={16} className="text-zinc-400"/>
-                    <input 
-                      type="date" 
-                      value={selectedDate} 
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="bg-transparent text-white text-sm outline-none cursor-pointer"
-                    />
+                    <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-white text-sm outline-none cursor-pointer"/>
                   </div>
                 </div>
                 <button onClick={() => setShowReport(false)} className="bg-zinc-800 p-2 rounded-full hover:bg-zinc-700 transition-colors"><X size={20}/></button>
@@ -233,7 +251,7 @@ export default function CashierView() {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-emerald-600/20 border border-emerald-500/50 p-4 rounded-xl text-center md:text-white text-black border-black/10 md:border-emerald-500/50 bg-gray-100 md:bg-emerald-600/20">
-                        <p className="text-sm opacity-70">Ventas del Día</p>
+                        <p className="text-sm opacity-70">Total Ingresos</p>
                         <p className="text-4xl font-bold text-emerald-500">S/ {reportTotal.toFixed(2)}</p>
                     </div>
                     <div className="space-y-2 text-sm">
@@ -245,13 +263,13 @@ export default function CashierView() {
                 <div>
                     <h3 className="font-bold mb-4 border-b pb-2 md:text-white text-black">Detalle de Operaciones ({salesHistory.length})</h3>
                     {salesHistory.length === 0 ? (
-                      <p className="text-center text-zinc-500 py-4">No se encontraron ventas en esta fecha.</p>
+                      <p className="text-center text-zinc-500 py-4">No se encontraron movimientos.</p>
                     ) : (
                       <table className="w-full text-sm text-left md:text-white text-black">
                           <thead>
                               <tr className="border-b border-zinc-700 opacity-50">
                                   <th className="pb-2">Hora</th>
-                                  <th className="pb-2">Mesa</th>
+                                  <th className="pb-2">Origen</th>
                                   <th className="pb-2">Total</th>
                                   <th className="pb-2 text-right">Método</th>
                               </tr>
@@ -260,8 +278,17 @@ export default function CashierView() {
                               {salesHistory.map((tx) => (
                                   <tr key={tx.id} className="border-b border-zinc-800/50">
                                       <td className="py-2">{new Date(tx.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
-                                      <td className="py-2">{formatTable(tx.table_number)}</td>
-                                      <td className="py-2 font-bold">S/ {tx.total_price}</td>
+                                      
+                                      {/* Diferenciamos visualmente Reservas de Pedidos */}
+                                      <td className="py-2 flex items-center gap-2">
+                                        {tx.type === 'reserva' ? (
+                                            <><User size={14} className="text-blue-400"/> {tx.client_name || "Reserva Web"}</>
+                                        ) : (
+                                            <><MapPin size={14} className="text-yellow-400"/> {formatTable(tx.table_number)}</>
+                                        )}
+                                      </td>
+                                      
+                                      <td className="py-2 font-bold">S/ {tx.total_price.toFixed(2)}</td>
                                       <td className="py-2 text-right uppercase text-xs">{tx.payment_method || "EFECTIVO"}</td>
                                   </tr>
                               ))}
@@ -274,7 +301,7 @@ export default function CashierView() {
             <div className="p-4 border-t border-zinc-800 flex justify-end gap-2 bg-zinc-900 rounded-b-2xl no-print">
                 <button onClick={() => setShowReport(false)} className="px-6 py-3 rounded-lg font-bold border border-zinc-700 hover:bg-zinc-800 text-white">Cerrar</button>
                 <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2">
-                    <Printer size={18}/> Imprimir Reporte
+                    <Printer size={18}/> Imprimir Cierre
                 </button>
             </div>
           </div>
