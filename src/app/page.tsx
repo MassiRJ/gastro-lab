@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
-// CAMBIO IMPORTANTE: Importamos FoodMenu en lugar de Menu
-import FoodMenu from "./components/FoodMenu"; 
+import FoodMenu from "./components/FoodMenu"; // Asegúrate que importa FoodMenu
 import Reservation from "./components/Reservation";
 import Footer from "./components/Footer";
 import CartSidebar from "./components/CartSidebar";
@@ -22,8 +21,17 @@ export default function Home() {
     setToastMessage(`¡${item.title} agregado!`);
   };
 
+  // ⚠️ CAMBIO: Usamos lógica manual en vez de .filter para evitar el error
   const removeFromCart = (cartId) => {
-    setCart((prev) => prev.filter((item) => item.cartId !== cartId));
+    setCart((prev) => {
+      if (!prev) return []; // Seguridad extra
+      const newCart = [...prev];
+      const index = newCart.findIndex(item => item.cartId === cartId);
+      if (index > -1) {
+        newCart.splice(index, 1);
+      }
+      return newCart;
+    });
   };
 
   const clearCart = () => {
@@ -35,10 +43,7 @@ export default function Home() {
       <Navbar cartCount={cart.length} onOpenCart={() => setIsCartOpen(true)} />
       <Hero />
       <Features />
-      
-      {/* Usamos el NUEVO componente FoodMenu */}
       <FoodMenu onAddToCart={addToCart} />
-      
       <Testimonials />
       <Reservation />
       <Footer />

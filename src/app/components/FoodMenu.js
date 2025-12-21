@@ -2,16 +2,22 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-// DATOS ESTATICOS DENTRO DEL ARCHIVO (Imposible que falle)
-const DATA_PLATOS = [
+// LISTAS SEPARADAS (CERO RIESGO DE ERROR)
+const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
   { id: 3, category: "Entradas", title: "Papa a la Huancaína", price: 18.00 },
   { id: 4, category: "Entradas", title: "Tequeños de Queso", price: 15.00 },
+];
+
+const FONDOS = [
   { id: 5, category: "Fondos", title: "Lomo Saltado", price: 45.00 },
   { id: 6, category: "Fondos", title: "Ají de Gallina", price: 30.00 },
   { id: 7, category: "Fondos", title: "Arroz con Mariscos", price: 42.00 },
   { id: 8, category: "Fondos", title: "Seco de Cordero", price: 48.00 },
+];
+
+const BEBIDAS = [
   { id: 9, category: "Bebidas", title: "Chicha Morada (Jarra)", price: 15.00 },
   { id: 10, category: "Bebidas", title: "Limonada Frozen", price: 12.00 },
   { id: 11, category: "Bebidas", title: "Pisco Sour", price: 25.00 },
@@ -22,9 +28,15 @@ export default function FoodMenu({ onAddToCart }) {
   const categories = ["Entradas", "Fondos", "Bebidas"];
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // Filtramos la constante local DATA_PLATOS.
-  // Al ser una constante definida arriba, NUNCA será undefined.
-  const itemsToShow = DATA_PLATOS.filter(item => item.category === activeCategory);
+  // SELECCIÓN MANUAL SIN .FILTER()
+  let itemsToShow = [];
+  if (activeCategory === "Entradas") {
+    itemsToShow = ENTRADAS;
+  } else if (activeCategory === "Fondos") {
+    itemsToShow = FONDOS;
+  } else {
+    itemsToShow = BEBIDAS;
+  }
 
   return (
     <section id="menu" className="py-20 px-4 max-w-7xl mx-auto min-h-screen">
@@ -33,7 +45,6 @@ export default function FoodMenu({ onAddToCart }) {
         <p className="text-gray-400">Selecciona una categoría</p>
       </div>
       
-      {/* TABS */}
       <div className="flex justify-center gap-4 mb-12 flex-wrap">
         {categories.map((cat) => (
           <button
@@ -50,7 +61,6 @@ export default function FoodMenu({ onAddToCart }) {
         ))}
       </div>
       
-      {/* GRILLA */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {itemsToShow.map((item) => (
           <div key={item.id} className="bg-zinc-900/50 border border-white/5 rounded-2xl overflow-hidden hover:border-emerald-500/30 transition-all group hover:shadow-2xl hover:shadow-emerald-900/10">
@@ -63,9 +73,11 @@ export default function FoodMenu({ onAddToCart }) {
                   S/ {item.price.toFixed(2)}
                 </span>
             </div>
+            
             <div className="p-6 relative">
               <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
               <p className="text-gray-500 text-sm mb-6 line-clamp-2">Plato especial de la casa.</p>
+              
               <button 
                 onClick={() => onAddToCart(item)}
                 className="w-full bg-white text-black hover:bg-emerald-500 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
