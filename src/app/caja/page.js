@@ -1,26 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, CreditCard, Receipt, Smartphone, Check, X, Printer } from "lucide-react";
+import { DollarSign, CreditCard, Receipt, Smartphone, Check, Printer, MapPin } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
-import { cobrarPedido } from "../cocina/actions"; // Reusamos el archivo de acciones
 
 export default function CashierView() {
   const [orders, setOrders] = useState([]);
-  const [selectedOrder, setSelectedOrder] = useState(null); // Para el voucher
+  const [selectedOrder, setSelectedOrder] = useState(null); 
+  const [loadingPay, setLoadingPay] = useState(false);
 
   useEffect(() => {
     fetchPendingPayments();
-    // Escuchar cambios en tiempo real desde cocina
+
+    // 1. Realtime
     const channel = supabase.channel('caja_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchPendingPayments)
       .subscribe();
-    return () => supabase.removeChannel(channel);
+    
+    // 2. Refresco Automático cada 3s (Respaldo)
+    const interval = setInterval(fetchPendingPayments, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
   const fetchPendingPayments = async () => {
-    // Traemos todo lo que NO esté pagado ('pendiente' o 'atendido')
-    // Pero principalmente nos interesa 'atendido' que es cuando ya comieron
+    // Traemos lo que NO esté pagado
     const { data } = await supabase
       .from("orders")
       .select("*")
@@ -29,23 +36,38 @@ export default function CashierView() {
     if (data) setOrders(data);
   };
 
-  const handleCobrar = async (order) => {
-    setSelectedOrder(order); // Abre el modal de voucher
+  const handleCobrar = (order) => {
+    setSelectedOrder(order); 
   };
 
   const confirmPayment = async () => {
     if (!selectedOrder) return;
+    setLoadingPay(true);
+
     try {
-      await cobrarPedido(selectedOrder.id);
-      alert("✅ Pago registrado y mesa liberada");
+      // HACEMOS EL UPDATE DIRECTO AQUI (Evita el error de Server Component)
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'pagado', 
+          payment_status: 'paid' 
+        })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      alert("✅ Pago registrado correctamente");
       setSelectedOrder(null);
-      fetchPendingPayments(); // Refrescar lista
+      fetchPendingPayments(); // Actualizar lista inmediatamente
+
     } catch (error) {
-      alert("Error: " + error.message);
+      console.error("Error al cobrar:", error);
+      alert("Error al procesar pago: " + error.message);
+    } finally {
+      setLoadingPay(false);
     }
   };
 
-  // Función para determinar el estado visual
   const getStatusBadge = (order) => {
     const isYape = order.payment_method?.toLowerCase().includes('yape') || order.payment_method?.toLowerCase().includes('transfer');
     
@@ -53,6 +75,12 @@ export default function CashierView() {
       return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-500/50 flex items-center gap-1"><Smartphone size={12}/> Verificar App</span>;
     }
     return <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs border border-red-500/50 flex items-center gap-1"><DollarSign size={12}/> Cobrar en Caja</span>;
+  };
+
+  // Corrección de texto Mesa
+  const formatTable = (tableName) => {
+    if (!tableName) return "Mesa ?";
+    return tableName.toString().toLowerCase().includes('mesa') ? tableName : `Mesa ${tableName}`;
   };
 
   return (
@@ -65,48 +93,54 @@ export default function CashierView() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {orders.map((order) => (
-          <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-xl font-bold text-white">Mesa {order.table_number}</h3>
-                <p className="text-zinc-400 text-sm">Mozo: {order.waiter_name || "General"}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-emerald-400">S/ {(order.total_price || 0).toFixed(2)}</p>
-                {getStatusBadge(order)}
-              </div>
+        {orders.length === 0 ? (
+            <div className="col-span-full text-center py-20 text-zinc-500">
+                <p>No hay mesas pendientes de cobro.</p>
             </div>
-
-            <div className="bg-zinc-950/50 p-3 rounded-lg mb-4 text-sm text-zinc-300 max-h-32 overflow-y-auto">
-              {order.items?.map((item, i) => (
-                <div key={i} className="flex justify-between border-b border-zinc-800/50 last:border-0 py-1">
-                  <span>{item.title}</span>
-                  <span>S/ {item.price}</span>
+        ) : (
+            orders.map((order) => (
+            <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 hover:border-zinc-700 transition-all animate-in fade-in zoom-in duration-300">
+                <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h3 className="text-xl font-bold text-white">{formatTable(order.table_number)}</h3>
+                    <p className="text-zinc-400 text-sm">Mozo: {order.waiter_name || "General"}</p>
                 </div>
-              ))}
-            </div>
+                <div className="text-right">
+                    <p className="text-2xl font-bold text-emerald-400">S/ {(order.total_price || 0).toFixed(2)}</p>
+                    {getStatusBadge(order)}
+                </div>
+                </div>
 
-            <div className="flex gap-2 items-center text-sm text-zinc-500 mb-4">
-              Estado cocina: 
-              <span className={`uppercase font-bold ${order.status === 'atendido' ? 'text-green-500' : 'text-orange-500'}`}>
-                {order.status}
-              </span>
-            </div>
+                <div className="bg-zinc-950/50 p-3 rounded-lg mb-4 text-sm text-zinc-300 max-h-32 overflow-y-auto">
+                {order.items?.map((item, i) => (
+                    <div key={i} className="flex justify-between border-b border-zinc-800/50 last:border-0 py-1">
+                    <span>{item.title}</span>
+                    <span>S/ {item.price}</span>
+                    </div>
+                ))}
+                </div>
 
-            <button 
-              onClick={() => handleCobrar(order)}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2"
-            >
-              <CreditCard size={18} /> Procesar Pago
-            </button>
-          </div>
-        ))}
+                <div className="flex gap-2 items-center text-sm text-zinc-500 mb-4">
+                Estado cocina: 
+                <span className={`uppercase font-bold ${order.status === 'atendido' ? 'text-green-500' : 'text-orange-500'}`}>
+                    {order.status}
+                </span>
+                </div>
+
+                <button 
+                onClick={() => handleCobrar(order)}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                <CreditCard size={18} /> Procesar Pago
+                </button>
+            </div>
+            ))
+        )}
       </div>
 
       {/* --- MODAL DE VOUCHER --- */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white text-black p-6 rounded-lg w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
             <div className="text-center border-b-2 border-dashed border-zinc-300 pb-4 mb-4">
               <h2 className="text-2xl font-bold uppercase">Gastro Lab</h2>
@@ -115,10 +149,10 @@ export default function CashierView() {
             </div>
 
             <div className="space-y-2 mb-4 text-sm font-mono">
-              <div className="flex justify-between"><span>Mesa:</span> <span>{selectedOrder.table_number}</span></div>
+              <div className="flex justify-between"><span>Mesa:</span> <span>{formatTable(selectedOrder.table_number)}</span></div>
               <div className="flex justify-between"><span>Fecha:</span> <span>{new Date().toLocaleDateString()}</span></div>
               <hr className="border-dashed border-zinc-300 my-2"/>
-              {selectedOrder.items.map((item, i) => (
+              {selectedOrder.items && selectedOrder.items.map((item, i) => (
                  <div key={i} className="flex justify-between">
                    <span>{item.title}</span>
                    <span>{item.price}</span>
@@ -127,17 +161,27 @@ export default function CashierView() {
               <hr className="border-zinc-800 my-2"/>
               <div className="flex justify-between text-xl font-bold">
                 <span>TOTAL:</span>
-                <span>S/ {selectedOrder.total_price.toFixed(2)}</span>
+                <span>S/ {(selectedOrder.total_price || 0).toFixed(2)}</span>
               </div>
               <div className="text-center mt-2 text-xs bg-zinc-100 p-1 rounded">
-                Método: {selectedOrder.payment_method?.toUpperCase()}
+                Método: {selectedOrder.payment_method?.toUpperCase() || "EFECTIVO"}
               </div>
             </div>
 
             <div className="flex gap-2 mt-6">
-              <button onClick={() => setSelectedOrder(null)} className="flex-1 border border-zinc-300 py-3 rounded font-bold hover:bg-zinc-100">Cancelar</button>
-              <button onClick={confirmPayment} className="flex-1 bg-black text-white py-3 rounded font-bold flex items-center justify-center gap-2 hover:bg-zinc-800">
-                <Printer size={18}/> Emitir & Cerrar
+              <button 
+                onClick={() => setSelectedOrder(null)} 
+                className="flex-1 border border-zinc-300 py-3 rounded font-bold hover:bg-zinc-100"
+                disabled={loadingPay}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmPayment} 
+                className="flex-1 bg-black text-white py-3 rounded font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 disabled:opacity-50"
+                disabled={loadingPay}
+              >
+                {loadingPay ? "Procesando..." : <><Printer size={18}/> Emitir</>}
               </button>
             </div>
           </div>
