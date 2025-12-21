@@ -1,12 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
   eslint: {
-    // Ignora errores de estilo (variables no usadas, etc.)
+    // Esto permite que el build continúe aunque haya advertencias de estilo
     ignoreDuringBuilds: true,
-  },
-  typescript: {
-    // Ignora errores de tipos (ya que pasamos a JS)
-    ignoreBuildErrors: true,
   },
 };
 

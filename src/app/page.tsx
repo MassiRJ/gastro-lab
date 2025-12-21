@@ -11,6 +11,7 @@ import Testimonials from "./components/Testimonials";
 import Features from "./components/Features";
 import Toast from "./components/Toast";
 
+// Datos estáticos simples (sin componentes dentro)
 const MENU_ITEMS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
@@ -26,6 +27,7 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState("");
 
   const addToCart = (item) => {
+    // Nos aseguramos de copiar solo los datos, nada extra
     setCart((prev) => [...prev, { ...item, cartId: Math.random() }]);
     setToastMessage(`Agregado: ${item.title}`);
   };
@@ -43,13 +45,17 @@ export default function Home() {
       <Testimonials />
       <Reservation />
       <Footer />
+      
       <CartSidebar 
         isOpen={isCartOpen} 
         onClose={() => setIsCartOpen(false)} 
         cartItems={cart} 
         onRemoveItem={removeFromCart} 
       />
-      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage("")} />}
+      
+      {toastMessage && (
+        <Toast message={toastMessage} onClose={() => setToastMessage("")} />
+      )}
     </main>
   );
 }
