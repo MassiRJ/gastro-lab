@@ -2,12 +2,24 @@
 import { Clock, Wifi, Award } from "lucide-react";
 
 export default function Features() {
+  // SOLUCIÓN NUCLEAR: Creamos los iconos AQUÍ MISMO con sus etiquetas < />
+  // Así React no se confunde intentando renderizar un objeto.
   const features = [
-    // ⚠️ CAMBIO CLAVE: No usamos <Clock />, usamos Clock (sin los picos)
-    // Guardamos el componente en una variable llamada 'Icon'
-    { Icon: Clock, color: "text-orange-500", title: "Rápido", desc: "De la cocina a tu mesa en tiempo récord." },
-    { Icon: Wifi, color: "text-blue-500", title: "Digital", desc: "Pide desde tu móvil sin esperar al mozo." },
-    { Icon: Award, color: "text-yellow-500", title: "Calidad", desc: "Ingredientes premium seleccionados a diario." },
+    { 
+      element: <Clock className="text-orange-500" size={32} />, 
+      title: "Rápido", 
+      desc: "De la cocina a tu mesa en tiempo récord." 
+    },
+    { 
+      element: <Wifi className="text-blue-500" size={32} />, 
+      title: "Digital", 
+      desc: "Pide desde tu móvil sin esperar al mozo." 
+    },
+    { 
+      element: <Award className="text-yellow-500" size={32} />, 
+      title: "Calidad", 
+      desc: "Ingredientes premium seleccionados a diario." 
+    },
   ];
 
   return (
@@ -16,8 +28,8 @@ export default function Features() {
         {features.map((feature, i) => (
           <div key={i} className="flex flex-col items-center text-center p-6 bg-zinc-900/30 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-colors">
             <div className="mb-4 p-3 bg-white/5 rounded-full">
-              {/* AQUI RENDERIZAMOS EL ICONO COMO COMPONENTE */}
-              <feature.Icon className={feature.color} size={32} />
+              {/* Ahora solo pintamos el elemento ya creado. Cero riesgo de error. */}
+              {feature.element}
             </div>
             <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
             <p className="text-gray-400 text-sm">{feature.desc}</p>

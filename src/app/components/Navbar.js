@@ -1,10 +1,9 @@
 "use client";
 
-// Importamos con alias para evitar conflictos de nombres
-import { ShoppingCart, Menu as MenuIcon, X } from "lucide-react";
+import { ShoppingCart, Menu, X } from "lucide-react";
 import { useState } from "react";
 
-export default function Navbar({ cartCount, onOpenCart }) {
+export default function Navbar({ cartCount = 0, onOpenCart }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -27,7 +26,7 @@ export default function Navbar({ cartCount, onOpenCart }) {
               >
                 <ShoppingCart size={18} /> 
                 <span className="bg-white text-emerald-900 px-2 py-0.5 rounded-full text-xs">
-                  {cartCount || 0}
+                  {cartCount}
                 </span>
               </button>
             </div>
@@ -39,8 +38,7 @@ export default function Navbar({ cartCount, onOpenCart }) {
               onClick={() => setIsOpen(!isOpen)} 
               className="text-gray-400 hover:text-white p-2"
             >
-              {/* Renderizado condicional seguro */}
-              {isOpen ? <X size={24} /> : <MenuIcon size={24} />}
+              {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
@@ -54,7 +52,7 @@ export default function Navbar({ cartCount, onOpenCart }) {
             onClick={() => { onOpenCart(); setIsOpen(false); }}
             className="w-full text-left text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
           >
-            Carrito ({cartCount || 0})
+            Carrito ({cartCount})
           </button>
         </div>
       )}
