@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
-import Menu from "./components/Menu"; // Ya trae sus datos dentro
+// CAMBIO IMPORTANTE: Importamos FoodMenu en lugar de Menu
+import FoodMenu from "./components/FoodMenu"; 
 import Reservation from "./components/Reservation";
 import Footer from "./components/Footer";
 import CartSidebar from "./components/CartSidebar";
@@ -19,7 +20,6 @@ export default function Home() {
   const addToCart = (item) => {
     setCart((prev) => [...prev, { ...item, cartId: Math.random() }]);
     setToastMessage(`¡${item.title} agregado!`);
-    // No abrimos el carrito automáticamente (diseño silencioso)
   };
 
   const removeFromCart = (cartId) => {
@@ -36,8 +36,8 @@ export default function Home() {
       <Hero />
       <Features />
       
-      {/* ⚠️ CAMBIO: Ya no pasamos items={...}, el componente los tiene dentro */}
-      <Menu onAddToCart={addToCart} />
+      {/* Usamos el NUEVO componente FoodMenu */}
+      <FoodMenu onAddToCart={addToCart} />
       
       <Testimonials />
       <Reservation />

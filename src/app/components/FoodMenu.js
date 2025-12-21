@@ -2,8 +2,8 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-// --- DATOS DUROS (HARDCODED) PARA QUE NO FALLE NUNCA ---
-const MENU_ITEMS = [
+// DATOS ESTATICOS DENTRO DEL ARCHIVO (Imposible que falle)
+const DATA_PLATOS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
   { id: 3, category: "Entradas", title: "Papa a la Huancaína", price: 18.00 },
@@ -18,12 +18,13 @@ const MENU_ITEMS = [
   { id: 12, category: "Bebidas", title: "Cerveza Cusqueña", price: 10.00 },
 ];
 
-export default function Menu({ onAddToCart }) {
+export default function FoodMenu({ onAddToCart }) {
   const categories = ["Entradas", "Fondos", "Bebidas"];
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // Filtramos directamente la constante local. IMPOSIBLE que sea undefined.
-  const filteredItems = MENU_ITEMS.filter(item => item.category === activeCategory);
+  // Filtramos la constante local DATA_PLATOS.
+  // Al ser una constante definida arriba, NUNCA será undefined.
+  const itemsToShow = DATA_PLATOS.filter(item => item.category === activeCategory);
 
   return (
     <section id="menu" className="py-20 px-4 max-w-7xl mx-auto min-h-screen">
@@ -32,7 +33,7 @@ export default function Menu({ onAddToCart }) {
         <p className="text-gray-400">Selecciona una categoría</p>
       </div>
       
-      {/* PESTAÑAS */}
+      {/* TABS */}
       <div className="flex justify-center gap-4 mb-12 flex-wrap">
         {categories.map((cat) => (
           <button
@@ -50,8 +51,8 @@ export default function Menu({ onAddToCart }) {
       </div>
       
       {/* GRILLA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in zoom-in duration-300">
-        {filteredItems.map((item) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {itemsToShow.map((item) => (
           <div key={item.id} className="bg-zinc-900/50 border border-white/5 rounded-2xl overflow-hidden hover:border-emerald-500/30 transition-all group hover:shadow-2xl hover:shadow-emerald-900/10">
             <div className="h-48 bg-zinc-800 relative overflow-hidden flex items-center justify-center">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"/>
@@ -62,11 +63,9 @@ export default function Menu({ onAddToCart }) {
                   S/ {item.price.toFixed(2)}
                 </span>
             </div>
-            
             <div className="p-6 relative">
               <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
-              <p className="text-gray-500 text-sm mb-6 line-clamp-2">Deliciosa preparación con los mejores ingredientes seleccionados.</p>
-              
+              <p className="text-gray-500 text-sm mb-6 line-clamp-2">Plato especial de la casa.</p>
               <button 
                 onClick={() => onAddToCart(item)}
                 className="w-full bg-white text-black hover:bg-emerald-500 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
