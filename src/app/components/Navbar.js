@@ -1,6 +1,7 @@
 "use client";
 
-import { ShoppingCart, Menu, X } from "lucide-react";
+// Importamos el icono Menu COMO MenuIcon para que no se confunda con nada mas
+import { ShoppingCart, Menu as MenuIcon, X } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar({ cartCount = 0, onOpenCart }) {
@@ -10,12 +11,13 @@ export default function Navbar({ cartCount = 0, onOpenCart }) {
     <nav className="fixed w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
+          
           {/* LOGO */}
           <div className="flex-shrink-0 font-bold text-2xl tracking-tighter text-white">
             GASTRO<span className="text-emerald-500">LAB</span>
           </div>
 
-          {/* MENU DESKTOP */}
+          {/* MENU ESCRITORIO */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-8">
               <a href="#menu" className="hover:text-emerald-400 px-3 py-2 rounded-md text-sm font-medium transition-colors">Menú</a>
@@ -32,19 +34,19 @@ export default function Navbar({ cartCount = 0, onOpenCart }) {
             </div>
           </div>
 
-          {/* BOTON MENU MOVIL */}
+          {/* BOTON MÓVIL (Aquí usamos MenuIcon explícitamente) */}
           <div className="-mr-2 flex md:hidden">
             <button 
               onClick={() => setIsOpen(!isOpen)} 
               className="text-gray-400 hover:text-white p-2"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X size={24} /> : <MenuIcon size={24} />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* DROPDOWN MOVIL */}
+      {/* MENU DESPLEGABLE MÓVIL */}
       {isOpen && (
         <div className="md:hidden bg-zinc-900 px-2 pt-2 pb-3 space-y-1 sm:px-3 border-b border-zinc-800">
           <a href="#menu" className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">Menú</a>
