@@ -37,33 +37,33 @@ export default function CashierView() {
 
   useEffect(() => { if (showReport) fetchDailyReport(); }, [selectedDate]);
 
-  // --- LOGICA COBRO (MODIFICADA PARA INCLUIR RESERVAS) ---
+  // --- LOGICA COBRO ---
   const fetchPendingPayments = async () => {
-    // 1. Traer Pedidos de Mesas (lo que ya tenías)
+    // 1. Traer Pedidos de Mesas
     const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
         .neq('status', 'pagado')
-        .neq('status', 'completado') // Asegurar no traer completados
+        .neq('status', 'completado') 
         .order("created_at", { ascending: false });
 
-    // 2. Traer Reservas Pendientes de Pago (NUEVO)
+    // 2. Traer Reservas Pendientes de Pago
     const { data: reservData } = await supabase
         .from("reservations")
         .select("*")
-        .eq('payment_status', 'pending') // Solo las que falta confirmar pago
+        .eq('payment_status', 'pending') 
         .order("created_at", { ascending: false });
 
-    // 3. Formatear Reservas para que parezcan "Ordenes" visualmente
+    // 3. Formatear Reservas
     const formattedReservs = (reservData || []).map(r => ({
         id: r.id,
-        table_number: "RESERVA WEB", // Para mostrar en la tarjeta
-        waiter_name: r.name, // Usamos el nombre del cliente
-        total_price: r.paid_amount || 50.00, // Monto garantía
+        table_number: "RESERVA WEB", 
+        waiter_name: r.name, 
+        total_price: r.paid_amount || 50.00, 
         payment_method: r.payment_method || 'Yape',
         status: r.status,
-        type: 'reserva_pendiente', // Marca especial
-        items: [ // Item ficticio para el detalle
+        type: 'reserva_pendiente', 
+        items: [ 
             { title: `Reserva ${r.people} pax`, price: (r.paid_amount || 50).toFixed(2) },
             { title: `Fecha: ${r.date} - ${r.time}`, price: "" }
         ]
@@ -77,32 +77,35 @@ export default function CashierView() {
 
   const handleCobrar = (order) => setSelectedOrder(order);
 
+  // 🔴 AQUÍ ESTABA EL ERROR: CORREGIDO
   const confirmPaymentAndPrint = async () => {
     if (!selectedOrder) return;
     setLoadingPay(true);
     try {
       if (selectedOrder.type === 'reserva_pendiente') {
-          // --- LOGICA CONFIRMAR RESERVA ---
+          // --- LOGICA CONFIRMAR RESERVA (Tabla reservations SÍ tiene payment_status) ---
           const { error } = await supabase
             .from('reservations')
             .update({ 
-                payment_status: 'pagado', // Marca como pagado
-                status: 'confirmada'      // Reserva confirmada
+                payment_status: 'pagado', 
+                status: 'confirmada'      
             })
             .eq('id', selectedOrder.id);
           if (error) throw error;
           alert("✅ Garantía confirmada exitosamente");
       } else {
-          // --- LOGICA COBRO MESA (NORMAL) ---
+          // --- LOGICA COBRO MESA (Tabla orders NO tiene payment_status) ---
+          // Solo actualizamos 'status' a 'pagado'
           const { error } = await supabase
             .from('orders')
-            .update({ status: 'pagado', payment_status: 'pagado' }) // Aseguramos ambos campos
+            .update({ status: 'pagado' }) 
             .eq('id', selectedOrder.id);
           if (error) throw error;
       }
       
       setTimeout(() => { 
-          if(selectedOrder.type !== 'reserva_pendiente') window.print(); // Solo imprimir voucher mesa
+          // Solo imprimir voucher si es mesa (ticket físico)
+          if(selectedOrder.type !== 'reserva_pendiente') window.print(); 
           setSelectedOrder(null); 
           fetchPendingPayments(); 
       }, 500);
@@ -114,7 +117,7 @@ export default function CashierView() {
     }
   };
 
-  // --- LOGICA REPORTE (SIN CAMBIOS ESTRUCTURALES) ---
+  // --- LOGICA REPORTE ---
   const fetchDailyReport = async () => {
     const [year, month, day] = selectedDate.split('-').map(Number);
     const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
@@ -136,7 +139,7 @@ export default function CashierView() {
       client_name: res.name,
       res_date: res.date,
       res_time: res.time,
-      res_guests: res.people, // Ojo: en BD es people
+      res_guests: res.people,
       res_phone: res.phone
     }));
 
@@ -160,11 +163,9 @@ export default function CashierView() {
   const formatTable = (tableName) => tableName?.toString().toLowerCase().includes('mesa') || tableName === "RESERVA WEB" ? tableName : `Mesa ${tableName}`;
   
   const getStatusBadge = (order) => {
-    // Si es reserva
     if (order.type === 'reserva_pendiente') {
         return <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs border border-purple-500/50 flex items-center gap-1"><Smartphone size={12}/> Confirmar Abono</span>;
     }
-    // Si es mesa
     const isYape = order.payment_method?.toLowerCase().includes('yape');
     if (isYape) return <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-500/50 flex items-center gap-1"><Smartphone size={12}/> Yape/App</span>;
     return <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded text-xs border border-red-500/50 flex items-center gap-1"><DollarSign size={12}/> Efectivo</span>;
@@ -254,7 +255,7 @@ export default function CashierView() {
         </div>
       )}
 
-      {/* --- MODAL REPORTE (TU CÓDIGO ORIGINAL SIN CAMBIOS) --- */}
+      {/* --- MODAL REPORTE --- */}
       {showReport && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-zinc-900 w-full max-w-3xl h-[90vh] rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 border border-zinc-800 relative">
@@ -323,7 +324,7 @@ export default function CashierView() {
                 <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Printer size={18}/> Imprimir Reporte</button>
             </div>
 
-            {/* --- SUB-MODAL DETALLE (IGUAL QUE ANTES) --- */}
+            {/* --- SUB-MODAL DETALLE --- */}
             {viewDetail && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-8 animate-in fade-in duration-200 rounded-2xl">
                 <div className="bg-zinc-950 border border-zinc-700 p-6 rounded-xl w-full max-w-sm shadow-2xl relative">
