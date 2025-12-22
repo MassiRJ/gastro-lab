@@ -1,161 +1,93 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { CheckCircle, Utensils, MapPin, Clock } from "lucide-react"; 
 import { supabase } from "../../lib/supabaseClient";
-import { CheckCircle, Clock, ChefHat, Loader2, LogOut } from "lucide-react";
+import { marcarPedidoAtendido } from "./actions"; 
 
-export default function KitchenView() {
-  const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+export default function KitchenDisplay() {
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingId, setLoadingId] = useState(null);
 
-  // --- 1. EL CANDADO DE SEGURIDAD 🔒 ---
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login"); // ¡Fuera de aquí!
-      } else {
-        setAuthorized(true);   // Pase usted
-        fetchOrders();         // Cargar pedidos
-      }
-    };
-    checkUser();
-  }, []);
+    fetchOrders();
 
-  // --- 2. SISTEMA DE TIEMPO REAL ⚡ ---
-  useEffect(() => {
-    if (!authorized) return;
-
-    const channel = supabase
-      .channel('cocina_realtime')
+    // 1. INTENTO DE REALTIME (Si está activado en Supabase)
+    const channel = supabase.channel('cocina_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchOrders)
       .subscribe();
 
-    // Actualizar cada 10 seg por si acaso
-    const interval = setInterval(fetchOrders, 10000);
+    // 2. PLAN B: REFRESCO AUTOMÁTICO CADA 3 SEGUNDOS (Infalible)
+    const interval = setInterval(fetchOrders, 3000);
 
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [authorized]);
+  }, []);
 
   const fetchOrders = async () => {
-    setLoading(true);
-    // Traemos pedidos que NO estén completados (pendientes o pagados)
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("orders")
       .select("*")
-      .neq("status", "completado") 
-      .order("created_at", { ascending: true }); // Los más viejos primero (FIFO)
-    
-    if (error) console.error("Error fetching orders:", error);
-    else setOrders(data || []);
-    setLoading(false);
+      .eq('status', 'pendiente') 
+      .order("created_at", { ascending: true });
+    if (data) setOrders(data);
   };
 
-  const markAsReady = async (id) => {
-    const confirm = window.confirm("¿Pedido listo para entregar?");
-    if (!confirm) return;
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "completado" })
-      .eq("id", id);
-
-    if (error) alert("Error al actualizar");
-    else fetchOrders();
+  const handleListo = async (id) => {
+    setLoadingId(id);
+    try {
+      await marcarPedidoAtendido(id);
+      // Lo quitamos visualmente al instante para que se sienta rápido
+      setOrders(prev => prev.filter(o => o.id !== id));
+    } catch (error) {
+      console.error(error);
+      alert("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setLoadingId(null);
+    }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+  // Función para formatear la mesa correctamente
+  const formatTable = (tableName) => {
+    if (!tableName) return "Mesa ?";
+    // Si ya dice "Mesa", no lo repetimos. Si es solo un número "1", le agregamos "Mesa "
+    return tableName.toString().toLowerCase().includes('mesa') ? tableName : `Mesa ${tableName}`;
   };
-
-  // PANTALLA DE CARGA (MIENTRAS VERIFICA PERMISO)
-  if (!authorized) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <Loader2 className="animate-spin text-orange-500" size={48} />
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6 font-sans">
-      
-      {/* HEADER COCINA */}
-      <header className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
-        <div>
-            <h1 className="text-3xl font-black uppercase tracking-widest flex items-center gap-3">
-                <ChefHat className="text-orange-500" size={32}/> Cocina
-            </h1>
-            <p className="text-zinc-500 text-sm mt-1">Gestión de Comandas en Vivo</p>
-        </div>
-        <div className="flex gap-4 items-center">
-            <div className="bg-orange-900/30 px-4 py-2 rounded-lg border border-orange-500/30 text-orange-400 font-bold">
-                {orders.length} Pendientes
-            </div>
-            <button 
-                onClick={handleLogout}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white p-3 rounded-lg transition-colors"
-                title="Cerrar Sesión"
-            >
-                <LogOut size={20}/>
-            </button>
-        </div>
+    <div className="min-h-screen p-6 text-white bg-zinc-950">
+      <header className="flex justify-between items-center mb-8 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+        <h1 className="text-3xl font-bold flex items-center gap-3"><Utensils className="text-orange-500" /> Cocina</h1>
+        <div className="bg-orange-600 px-4 py-1 rounded-full font-bold">{orders.length} Por preparar</div>
       </header>
 
-      {/* GRILLA DE PEDIDOS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
         {orders.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-20 text-zinc-600 opacity-50">
-                <ChefHat size={64} className="mb-4"/>
-                <p className="text-xl font-bold uppercase tracking-widest">Todo limpio, Chef</p>
-            </div>
+           <div className="col-span-full text-center py-20 text-zinc-500"><CheckCircle size={60} className="mx-auto mb-4" /><h2 className="text-2xl">Todo despachado</h2></div>
         ) : (
-            orders.map((order) => (
-                <div key={order.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col shadow-lg animate-in fade-in zoom-in duration-300 relative group">
-                    
-                    {/* Borde Superior de Estado */}
-                    <div className={`h-2 w-full ${order.payment_status === 'pagado' ? 'bg-emerald-500' : 'bg-orange-500'}`}/>
-
-                    <div className="p-5 flex-1">
-                        <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-2xl font-black text-white">Mesa {order.table_number}</h2>
-                            <span className="text-xs font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
-                                {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                        </div>
-
-                        <div className="space-y-3 mb-4">
-                            {order.items?.map((item, index) => (
-                                <div key={index} className="flex justify-between items-center text-sm border-b border-zinc-800/50 pb-2 last:border-0">
-                                    <span className="font-bold text-zinc-200">1x {item.title}</span>
-                                </div>
-                            ))}
-                        </div>
-                        
-                        {order.waiter_name && (
-                            <p className="text-xs text-zinc-500 uppercase tracking-wider mt-4">
-                                Mozo: {order.waiter_name}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Footer con Botón */}
-                    <div className="p-4 bg-black/20 border-t border-zinc-800">
-                        <button 
-                            onClick={() => markAsReady(order.id)}
-                            className="w-full bg-zinc-800 hover:bg-emerald-600 hover:text-white text-zinc-300 font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-95 group-hover:bg-zinc-700"
-                        >
-                            <CheckCircle size={18}/> MARCAR LISTO
-                        </button>
-                    </div>
-                </div>
-            ))
+          orders.map((order) => (
+            <div key={order.id} className="bg-zinc-900 border-l-4 border-orange-500 rounded-r-xl shadow-lg flex flex-col animate-in fade-in zoom-in duration-300">
+              <div className="bg-zinc-800 p-3 flex justify-between items-center">
+                  <h3 className="font-bold text-xl flex items-center gap-2">
+                    <MapPin className="text-yellow-500"/> 
+                    {formatTable(order.table_number)}
+                  </h3>
+                  <span className="text-xs text-zinc-400 font-mono flex items-center gap-1"><Clock size={12}/> {new Date(order.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+              </div>
+              <div className="p-4 flex-1">
+                <ul className="space-y-2">{order.items?.map((item, i) => (<li key={i} className="flex gap-2 border-b border-zinc-800 pb-1"><span className="text-orange-500 font-bold">1x</span> {item.title}</li>))}</ul>
+              </div>
+              <button 
+                onClick={() => handleListo(order.id)} 
+                disabled={loadingId === order.id}
+                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 flex justify-center gap-2 disabled:opacity-50 active:scale-95 transition-transform"
+              >
+                  {loadingId === order.id ? "Procesando..." : "PEDIDO LISTO"}
+              </button>
+            </div>
+          ))
         )}
       </div>
     </div>
