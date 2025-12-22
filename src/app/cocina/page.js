@@ -17,7 +17,7 @@ export default function KitchenDisplay() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/login"); // Si no hay sesión, al login
+        router.push("/login?returnUrl=/cocina"); // Si no hay sesión, al login
       } else {
         setAuthorized(true);   // Si hay sesión, autorizamos
       }

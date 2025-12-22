@@ -29,7 +29,7 @@ export default function CashierView() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/login"); // Si no hay sesión, manda al login
+        router.push("/login?returnUrl=/caja"); // Si no hay sesión, manda al login
       } else {
         setAuthorized(true); // Si hay sesión, muestra la página
       }
