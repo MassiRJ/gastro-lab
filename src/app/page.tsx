@@ -4,7 +4,7 @@ import { useState } from "react";
 import { 
   ShoppingCart, Plus, Menu as MenuIcon, X, 
   Trash2, Send, MapPin, Banknote, Smartphone,
-  Calendar, Users, Clock, ChefHat, Star
+  Calendar, Users, Clock, ChefHat, Star, ChevronDown, Phone
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -37,31 +37,31 @@ const BEBIDAS = [
 function InternalNavbar({ cartCount, onOpenCart }) {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <nav className="fixed w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
+    <nav className="fixed w-full z-50 bg-black/90 backdrop-blur-md border-b border-white/10 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-24">
           
           {/* LOGO */}
           <div className="flex-shrink-0 font-bold text-2xl tracking-widest text-white cursor-pointer uppercase">
-            GASTRO<span className="text-orange-500">•</span>LAB
+            GASTRO<span className="text-amber-500">.</span>LAB
           </div>
 
           {/* MENÚ CENTRAL */}
-          <div className="hidden md:flex items-center space-x-8 text-xs font-bold tracking-widest text-gray-300">
-            <a href="#" className="hover:text-white transition-colors">INICIO</a>
-            <a href="#nosotros" className="hover:text-white transition-colors">NOSOTROS</a>
-            <a href="#menu" className="hover:text-white transition-colors">MENÚ</a>
-            <a href="#reservas" className="hover:text-white transition-colors">RESERVAS</a>
+          <div className="hidden md:flex items-center space-x-10 text-xs font-bold tracking-widest text-gray-400">
+            <a href="#" className="hover:text-amber-500 transition-colors">INICIO</a>
+            <a href="#nosotros" className="hover:text-amber-500 transition-colors">NOSOTROS</a>
+            <a href="#menu" className="hover:text-amber-500 transition-colors">MENÚ</a>
+            <a href="#reservas" className="hover:text-amber-500 transition-colors">RESERVAS</a>
           </div>
 
           {/* BOTONES DERECHA */}
-          <div className="hidden md:flex items-center gap-4">
-             <button onClick={onOpenCart} className="relative p-2 text-white hover:text-orange-500 transition-colors">
-                <ShoppingCart size={20} />
-                {cartCount > 0 && <span className="absolute top-0 right-0 w-4 h-4 bg-orange-500 text-black text-[10px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
+          <div className="hidden md:flex items-center gap-6">
+             <button onClick={onOpenCart} className="relative p-2 text-white hover:text-amber-500 transition-colors">
+                <ShoppingCart size={22} />
+                {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
              </button>
-             <button className="bg-orange-500 hover:bg-orange-400 text-black px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-lg shadow-orange-500/20">
-                Pedir Online
+             <button className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-none border border-white font-bold text-xs tracking-widest transition-all">
+                PEDIR ONLINE
              </button>
           </div>
 
@@ -75,11 +75,11 @@ function InternalNavbar({ cartCount, onOpenCart }) {
       </div>
       
       {isOpen && (
-        <div className="md:hidden bg-zinc-950 px-4 pt-2 pb-4 space-y-2 border-b border-zinc-800 absolute w-full">
-           <a href="#nosotros" className="block text-gray-300 hover:text-white py-2 text-sm font-bold tracking-widest">NOSOTROS</a>
-           <a href="#menu" className="block text-gray-300 hover:text-white py-2 text-sm font-bold tracking-widest">MENÚ</a>
-           <a href="#reservas" className="block text-gray-300 hover:text-white py-2 text-sm font-bold tracking-widest">RESERVAS</a>
-           <button onClick={onOpenCart} className="w-full text-left text-orange-500 font-bold block py-2 text-sm">
+        <div className="md:hidden bg-zinc-950 px-6 pt-4 pb-8 space-y-4 border-b border-zinc-800 absolute w-full h-screen z-50">
+           <a href="#nosotros" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">NOSOTROS</a>
+           <a href="#menu" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">MENÚ</a>
+           <a href="#reservas" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">RESERVAS</a>
+           <button onClick={() => { setIsOpen(false); onOpenCart(); }} className="w-full text-left text-amber-500 font-bold block py-4 text-xl">
              VER CARRITO ({cartCount})
            </button>
         </div>
@@ -91,85 +91,86 @@ function InternalNavbar({ cartCount, onOpenCart }) {
 function InternalHero() {
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
+      {/* FONDO */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-black z-10" />
         <img 
-            src="https://images.unsplash.com/photo-1559339352-11d035aa65de?q=80&w=1920&auto=format&fit=crop" 
+            src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1920&auto=format&fit=crop" 
             alt="Fondo Gourmet" 
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-50"
         />
       </div>
 
-      <div className="relative z-20 text-center px-4 max-w-4xl mx-auto mt-10">
-        <div className="inline-block border border-orange-500/30 bg-orange-500/10 backdrop-blur-md px-4 py-1.5 rounded-full mb-6">
-            <span className="text-orange-400 text-xs font-bold tracking-widest uppercase">✨ Experiencia Gastronómica 2025</span>
+      <div className="relative z-20 text-center px-4 max-w-5xl mx-auto mt-20">
+        <div className="inline-block border border-amber-500/50 px-6 py-2 rounded-full mb-8 backdrop-blur-sm">
+            <span className="text-amber-400 text-xs font-bold tracking-[0.2em] uppercase">Alta Cocina &bull; Lima 2025</span>
         </div>
         
-        <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter text-white leading-none">
-          SABOR <span className="text-orange-500">ABSOLUTO</span>
+        <h1 className="text-6xl md:text-9xl font-black mb-8 tracking-tighter text-white leading-none">
+          SABOR <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-600">PURO</span>
         </h1>
         
-        <p className="text-lg md:text-xl text-gray-400 mb-10 font-light max-w-2xl mx-auto leading-relaxed">
-          Donde la tradición culinaria se encuentra con la innovación digital.<br className="hidden md:block"/>
-          Reserva tu mesa en el futuro de la gastronomía.
+        <p className="text-lg md:text-xl text-gray-300 mb-12 font-light max-w-2xl mx-auto leading-relaxed">
+          Fusionamos la tradición culinaria con la innovación digital.<br className="hidden md:block"/>
+          Una experiencia que despierta todos tus sentidos.
         </p>
         
-        <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-            <a href="#reservas" className="bg-orange-500 hover:bg-orange-400 text-black px-8 py-4 rounded-full font-bold text-sm tracking-wide transition-all w-full md:w-auto shadow-[0_0_20px_rgba(249,115,22,0.3)]">
-                Reservar Mesa ➔
+        <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
+            <a href="#reservas" className="bg-amber-500 hover:bg-amber-400 text-black px-10 py-4 font-bold text-sm tracking-widest transition-all w-full md:w-auto hover:scale-105">
+                RESERVAR MESA
             </a>
-            <a href="#menu" className="group bg-transparent border border-white/20 hover:border-white text-white px-8 py-4 rounded-full font-bold text-sm tracking-wide transition-all w-full md:w-auto">
-                Ver Menú Digital
+            <a href="#menu" className="bg-transparent border border-white/30 hover:border-white text-white px-10 py-4 font-bold text-sm tracking-widest transition-all w-full md:w-auto hover:bg-white/5">
+                VER CARTA
             </a>
         </div>
+      </div>
+      
+      {/* Scroll Down Indicator */}
+      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce text-gray-500">
+        <ChevronDown size={32}/>
       </div>
     </div>
   );
 }
 
-// --- NUEVA SECCIÓN NOSOTROS ---
 function InternalAbout() {
   return (
-    <section id="nosotros" className="py-24 bg-zinc-950 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+    <section id="nosotros" className="py-32 bg-zinc-950 relative overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
         
         {/* TEXTO */}
         <div className="order-2 md:order-1">
-          <h3 className="text-orange-500 font-bold tracking-widest text-sm uppercase mb-2">Nuestra Historia</h3>
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-            Pasión por el <br/><span className="text-zinc-500">Detalle.</span>
+          <h3 className="text-amber-500 font-bold tracking-widest text-xs uppercase mb-4">Nuestra Filosofía</h3>
+          <h2 className="text-4xl md:text-5xl font-black text-white mb-8 leading-tight">
+            Más que cocina, <br/>es <span className="text-zinc-600">Arte.</span>
           </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            En GastroLab, fusionamos la riqueza de la cocina tradicional peruana con técnicas de vanguardia. 
-            Cada plato cuenta una historia, desde la selección matutina de ingredientes frescos hasta el emplatado final en tu mesa.
-          </p>
-          <p className="text-gray-400 leading-relaxed mb-8">
-            No somos solo un restaurante; somos un laboratorio de sabores donde la tecnología 
-            mejora tu experiencia sin perder la calidez del servicio humano.
+          <p className="text-gray-400 leading-loose mb-6 text-sm md:text-base">
+            En GastroLab, cada plato es una obra maestra diseñada para contar una historia. 
+            Utilizamos ingredientes locales de primera calidad y aplicamos técnicas modernas 
+            para resaltar los sabores auténticos de nuestra tierra.
           </p>
           
-          <div className="grid grid-cols-2 gap-8 border-t border-zinc-800 pt-8">
+          <div className="grid grid-cols-2 gap-10 border-t border-zinc-900 pt-10 mt-10">
             <div>
-              <div className="flex items-center gap-2 mb-2 text-white font-bold"><ChefHat className="text-orange-500"/> Chefs Expertos</div>
-              <p className="text-xs text-gray-500">Maestros con trayectoria internacional.</p>
+              <div className="flex items-center gap-3 mb-3 text-white font-bold"><ChefHat className="text-amber-500"/> Maestría</div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Chefs Galardonados</p>
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-2 text-white font-bold"><Star className="text-orange-500"/> Calidad Premium</div>
-              <p className="text-xs text-gray-500">Insumos seleccionados diariamente.</p>
+              <div className="flex items-center gap-3 mb-3 text-white font-bold"><Star className="text-amber-500"/> Excelencia</div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Productos A1</p>
             </div>
           </div>
         </div>
 
         {/* IMAGEN */}
         <div className="order-1 md:order-2 relative">
-           <div className="absolute -inset-4 bg-orange-500/10 rounded-3xl blur-2xl"></div>
-           <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+           <div className="absolute -inset-4 bg-amber-500/10 rounded-none blur-3xl"></div>
+           <div className="relative h-[600px] w-full overflow-hidden grayscale hover:grayscale-0 transition-all duration-700">
              <img 
                src="https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?q=80&w=800&auto=format&fit=crop" 
                alt="Chef cocinando" 
-               className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+               className="w-full h-full object-cover"
              />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
            </div>
         </div>
       </div>
@@ -177,68 +178,117 @@ function InternalAbout() {
   );
 }
 
-// --- NUEVA SECCIÓN RESERVAS ---
+// --- RESERVAS CONECTADAS A SUPABASE (CORREGIDO) ---
 function InternalReservation() {
-  const [formData, setFormData] = useState({ name: "", date: "", time: "", guests: "2" });
+  // Estado ajustado a tu tabla: name, phone, date, time, people
+  const [formData, setFormData] = useState({ 
+    name: "", 
+    phone: "", 
+    date: "", 
+    time: "", 
+    people: "2" 
+  });
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`📅 ¡Reserva Solicitada!\n\nNombre: ${formData.name}\nFecha: ${formData.date} a las ${formData.time}\nPersonas: ${formData.guests}\n\nTe confirmaremos por correo en breve.`);
-    setFormData({ name: "", date: "", time: "", guests: "2" });
+    setLoading(true);
+
+    try {
+        // ENVIAR A SUPABASE (Tabla: reservations)
+        // Mapeamos los campos EXACTOS de tu base de datos
+        const { error } = await supabase.from('reservations').insert([
+            {
+                name: formData.name,
+                phone: formData.phone,
+                date: formData.date,
+                time: formData.time,
+                people: formData.people, // Campo correcto según tu tabla
+                status: 'pendiente',
+                payment_status: 'pending',
+                paid_amount: 0
+            }
+        ]);
+
+        if (error) throw error;
+
+        alert(`✅ ¡Reserva Solicitada con Éxito!\nTe esperamos el ${formData.date} a las ${formData.time}`);
+        // Limpiar formulario
+        setFormData({ name: "", phone: "", date: "", time: "", people: "2" });
+
+    } catch (error) {
+        console.error(error);
+        alert("Error al reservar: " + error.message);
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
-    <section id="reservas" className="py-24 bg-black relative">
-       {/* Decoración de fondo */}
-       <div className="absolute top-0 right-0 w-1/2 h-full bg-zinc-900/30 skew-x-12 pointer-events-none"></div>
-
+    <section id="reservas" className="py-32 bg-black relative border-t border-zinc-900">
        <div className="max-w-5xl mx-auto px-6 relative z-10">
-         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 md:p-12 shadow-2xl">
-           <div className="text-center mb-10">
-             <h3 className="text-orange-500 font-bold tracking-widest text-sm uppercase mb-2">Reserva tu Mesa</h3>
-             <h2 className="text-3xl md:text-4xl font-black text-white">Vive la Experiencia</h2>
-           </div>
+         <div className="text-center mb-16">
+             <h3 className="text-amber-500 font-bold tracking-widest text-xs uppercase mb-4">Agenda tu Visita</h3>
+             <h2 className="text-4xl md:text-5xl font-black text-white">Reserva tu Mesa</h2>
+         </div>
 
-           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div className="bg-zinc-900/50 border border-zinc-800 p-8 md:p-12 shadow-2xl backdrop-blur-sm">
+           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
              
              {/* Nombre */}
-             <div className="space-y-2">
-               <label className="text-xs font-bold text-zinc-500 uppercase ml-1">Nombre Completo</label>
+             <div className="space-y-3">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Nombre Completo</label>
                <input 
                  required
                  type="text" 
                  placeholder="Ej. Juan Pérez"
-                 className="w-full bg-black border border-zinc-800 rounded-xl p-4 text-white focus:border-orange-500 outline-none transition-colors"
+                 className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none transition-colors"
                  value={formData.name}
                  onChange={(e) => setFormData({...formData, name: e.target.value})}
                />
              </div>
 
-             {/* Personas */}
-             <div className="space-y-2">
-               <label className="text-xs font-bold text-zinc-500 uppercase ml-1">N° Personas</label>
+             {/* Teléfono (NUEVO) */}
+             <div className="space-y-3">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / Celular</label>
+               <div className="relative">
+                 <Phone className="absolute left-4 top-4 text-zinc-500" size={20}/>
+                 <input 
+                   required
+                   type="tel" 
+                   placeholder="Ej. 999 999 999"
+                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none transition-colors"
+                   value={formData.phone}
+                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                 />
+               </div>
+             </div>
+
+             {/* Personas (People) */}
+             <div className="space-y-3">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">N° Comensales</label>
                <div className="relative">
                  <Users className="absolute left-4 top-4 text-zinc-500" size={20}/>
                  <select 
-                   className="w-full bg-black border border-zinc-800 rounded-xl p-4 pl-12 text-white focus:border-orange-500 outline-none appearance-none cursor-pointer"
-                   value={formData.guests}
-                   onChange={(e) => setFormData({...formData, guests: e.target.value})}
+                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none cursor-pointer"
+                   value={formData.people}
+                   onChange={(e) => setFormData({...formData, people: e.target.value})}
                  >
-                   {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n} Personas</option>)}
-                   <option value="more">+8 Personas</option>
+                   {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n} Personas</option>)}
+                   <option value="more">+10 Personas</option>
                  </select>
                </div>
              </div>
 
              {/* Fecha */}
-             <div className="space-y-2">
-               <label className="text-xs font-bold text-zinc-500 uppercase ml-1">Fecha</label>
+             <div className="space-y-3">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Fecha</label>
                <div className="relative">
                  <Calendar className="absolute left-4 top-4 text-zinc-500" size={20}/>
                  <input 
                    required
                    type="date" 
-                   className="w-full bg-black border border-zinc-800 rounded-xl p-4 pl-12 text-white focus:border-orange-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
+                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
                    value={formData.date}
                    onChange={(e) => setFormData({...formData, date: e.target.value})}
                  />
@@ -246,14 +296,14 @@ function InternalReservation() {
              </div>
 
              {/* Hora */}
-             <div className="space-y-2">
-               <label className="text-xs font-bold text-zinc-500 uppercase ml-1">Hora</label>
+             <div className="space-y-3 md:col-span-2">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Hora</label>
                <div className="relative">
                  <Clock className="absolute left-4 top-4 text-zinc-500" size={20}/>
                  <input 
                    required
                    type="time" 
-                   className="w-full bg-black border border-zinc-800 rounded-xl p-4 pl-12 text-white focus:border-orange-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
+                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
                    value={formData.time}
                    onChange={(e) => setFormData({...formData, time: e.target.value})}
                  />
@@ -261,9 +311,9 @@ function InternalReservation() {
              </div>
 
              {/* Botón Submit */}
-             <div className="md:col-span-2 mt-4">
-               <button className="w-full bg-orange-500 hover:bg-orange-400 text-black font-bold py-4 rounded-xl text-lg transition-all shadow-lg shadow-orange-500/20 active:scale-95">
-                 CONFIRMAR RESERVA
+             <div className="md:col-span-2 mt-6">
+               <button disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-5 text-sm tracking-widest uppercase transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-50">
+                 {loading ? "ENVIANDO..." : "CONFIRMAR RESERVA"}
                </button>
              </div>
            </form>
@@ -280,6 +330,7 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
   const [payment, setPayment] = useState("efectivo");
   const [loading, setLoading] = useState(false);
 
+  // Generamos mesas del 1 al 15
   const mesas = Array.from({length: 15}, (_, i) => i + 1);
 
   const handleSend = async () => {
@@ -290,6 +341,7 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
       
       setLoading(true);
       try {
+        // ENVIAR A SUPABASE (Tabla: orders)
         const { error } = await supabase.from('orders').insert([
             {
               table_number: table,
@@ -303,7 +355,7 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
 
         if (error) throw error;
 
-        alert(`✅ Pedido Confirmado\nMesa: ${table}\nPago: ${payment.toUpperCase()}`);
+        alert(`✅ Pedido Enviado\nMesa: ${table}\nTotal: S/ ${total.toFixed(2)}`);
         onClearCart();
         onClose();
         setTable("");
@@ -317,30 +369,30 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
 
   return (
     <>
-      {isOpen && <div onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-in fade-in duration-300" />}
+      {isOpen && <div onClick={onClose} className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] animate-in fade-in duration-300" />}
       
       <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-950 border-l border-zinc-800 z-[70] transition-transform duration-300 shadow-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-8 h-full flex flex-col">
           
-          <div className="flex justify-between items-center mb-6 pb-4 border-b border-zinc-800">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span className="text-orange-500">●</span> Tu Pedido
+          <div className="flex justify-between items-center mb-8 pb-4 border-b border-zinc-900">
+              <h2 className="text-xl font-bold text-white tracking-widest uppercase">
+                  Tu Pedido
               </h2>
-              <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white"><X/></button>
+              <button onClick={onClose} className="p-2 hover:bg-zinc-900 rounded-full transition-colors text-zinc-500 hover:text-white"><X/></button>
           </div>
           
-          <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
             {!cartItems || cartItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center opacity-30 text-zinc-500">
+                <div className="h-full flex flex-col items-center justify-center opacity-30 text-zinc-600">
                     <ShoppingCart size={48} className="mb-4"/>
-                    <p>Carrito vacío</p>
+                    <p className="uppercase tracking-widest text-sm">Carrito vacío</p>
                 </div>
             ) : (
               cartItems.map((item) => (
-                <div key={item.cartId} className="flex justify-between items-center bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                <div key={item.cartId} className="flex justify-between items-center bg-black p-4 border border-zinc-900">
                   <div>
                       <h4 className="font-bold text-white text-sm">{item.title}</h4>
-                      <p className="text-orange-500 font-mono text-xs mt-1">S/ {item.price.toFixed(2)}</p>
+                      <p className="text-amber-500 font-mono text-xs mt-1">S/ {item.price.toFixed(2)}</p>
                   </div>
                   <button onClick={() => onRemoveItem(item.cartId)} className="text-zinc-600 hover:text-red-500 p-2 transition-all">
                       <Trash2 size={16}/>
@@ -351,18 +403,19 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
           </div>
 
           {cartItems && cartItems.length > 0 && (
-              <div className="bg-zinc-900 p-5 rounded-2xl mb-4 space-y-5 border border-zinc-800 mt-4 shadow-xl">
+              <div className="bg-black p-6 mb-6 space-y-6 border border-zinc-900 mt-6">
                   
+                  {/* SELECCIÓN DE MESA */}
                   <div>
-                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block ml-1">Seleccionar Mesa</label>
+                     <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Seleccionar Mesa</label>
                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3.5 text-orange-500" size={16}/>
+                        <MapPin className="absolute left-4 top-4 text-amber-500" size={16}/>
                         <select 
-                            className="w-full bg-black border border-zinc-700 p-3 pl-10 rounded-lg text-white appearance-none focus:border-orange-500 outline-none cursor-pointer font-bold"
+                            className="w-full bg-zinc-900 border border-zinc-800 p-3 pl-12 text-white appearance-none focus:border-amber-500 outline-none cursor-pointer font-bold text-sm"
                             value={table}
                             onChange={e => setTable(e.target.value)}
                         >
-                            <option value="">-- Elige tu mesa --</option>
+                            <option value="">-- Elige Mesa --</option>
                             {mesas.map(m => (
                                 <option key={m} value={m}>Mesa {m}</option>
                             ))}
@@ -370,40 +423,41 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
                      </div>
                   </div>
 
+                  {/* PAGO */}
                   <div>
-                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2 block ml-1">Método de Pago</label>
+                      <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Pago</label>
                       <div className="grid grid-cols-2 gap-3">
                           <button 
                             onClick={() => setPayment("efectivo")}
-                            className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payment === "efectivo" ? "bg-orange-500 text-black border-orange-500 shadow-lg shadow-orange-900/20" : "bg-black text-zinc-400 border-zinc-800 hover:border-zinc-600"}`}
+                            className={`p-3 border flex flex-col items-center gap-2 transition-all ${payment === "efectivo" ? "bg-amber-500 text-black border-amber-500" : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700"}`}
                           >
-                             <Banknote size={20}/>
-                             <span className="text-xs font-bold">Efectivo</span>
+                             <Banknote size={18}/>
+                             <span className="text-[10px] font-bold uppercase tracking-wider">Efectivo</span>
                           </button>
                           
                           <button 
                             onClick={() => setPayment("yape")}
-                            className={`p-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${payment === "yape" ? "bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-900/20" : "bg-black text-zinc-400 border-zinc-800 hover:border-zinc-600"}`}
+                            className={`p-3 border flex flex-col items-center gap-2 transition-all ${payment === "yape" ? "bg-purple-600 text-white border-purple-600" : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700"}`}
                           >
-                             <Smartphone size={20}/>
-                             <span className="text-xs font-bold">Yape / Plin</span>
+                             <Smartphone size={18}/>
+                             <span className="text-[10px] font-bold uppercase tracking-wider">Yape / Plin</span>
                           </button>
                       </div>
                   </div>
               </div>
           )}
 
-          <div className="border-t border-zinc-800 pt-6">
+          <div className="border-t border-zinc-900 pt-6">
             <div className="flex justify-between text-xl font-bold mb-6 text-white">
-                <span>Total</span>
-                <span className="text-orange-500 font-mono text-2xl">S/ {total.toFixed(2)}</span>
+                <span className="text-sm uppercase tracking-widest text-zinc-500">Total a Pagar</span>
+                <span className="text-amber-500 font-mono text-2xl">S/ {total.toFixed(2)}</span>
             </div>
             <button 
                 onClick={handleSend} 
                 disabled={loading || cartItems.length === 0} 
-                className="w-full bg-white hover:bg-gray-200 text-black py-4 rounded-xl font-bold flex justify-center gap-2 items-center disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 tracking-wide"
+                className="w-full bg-white hover:bg-gray-200 text-black py-4 font-bold flex justify-center gap-2 items-center disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 text-sm tracking-widest uppercase"
             >
-                {loading ? "Enviando..." : <>CONFIRMAR PEDIDO <Send size={18}/></>}
+                {loading ? "Enviando..." : <>Confirmar Pedido <Send size={16}/></>}
             </button>
           </div>
         </div>
@@ -446,31 +500,29 @@ export default function Home() {
   const clearCart = () => setCart([]);
 
   return (
-    <main className="bg-black min-h-screen text-white selection:bg-orange-500 selection:text-white font-sans scroll-smooth">
+    <main className="bg-black min-h-screen text-white selection:bg-amber-500 selection:text-black font-sans scroll-smooth">
       <InternalNavbar cartCount={cart.length} onOpenCart={() => setIsCartOpen(true)} />
       
-      {/* 1. HERO (INICIO) */}
       <InternalHero />
       
-      {/* 2. NOSOTROS */}
       <InternalAbout />
 
-      {/* 3. MENÚ */}
-      <section id="menu" className="py-24 px-4 max-w-7xl mx-auto min-h-screen border-t border-zinc-900">
-        <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-white uppercase tracking-tight">Nuestra <span className="text-orange-500">Carta</span></h2>
-            <div className="h-1 w-20 bg-orange-500 mx-auto rounded-full"/>
+      {/* SECCIÓN MENU */}
+      <section id="menu" className="py-32 px-4 max-w-7xl mx-auto min-h-screen bg-black relative">
+        <div className="text-center mb-20">
+            <h3 className="text-amber-500 font-bold tracking-widest text-xs uppercase mb-4">Nuestra Propuesta</h3>
+            <h2 className="text-4xl md:text-5xl font-black mb-4 text-white uppercase tracking-tight">Carta <span className="text-zinc-700">Digital</span></h2>
         </div>
         
-        <div className="flex justify-center gap-4 mb-16 flex-wrap">
+        <div className="flex justify-center gap-6 mb-20 flex-wrap">
             {["Entradas", "Fondos", "Bebidas"].map((cat) => (
             <button 
                 key={cat} 
                 onClick={() => setActiveCategory(cat)} 
-                className={`px-8 py-3 rounded-full font-bold text-sm tracking-widest uppercase transition-all transform hover:scale-105 ${
+                className={`px-8 py-4 border font-bold text-xs tracking-[0.2em] uppercase transition-all duration-300 ${
                     activeCategory === cat 
-                    ? "bg-orange-500 text-black shadow-lg shadow-orange-500/20" 
-                    : "bg-zinc-900 text-gray-400 border border-zinc-800 hover:border-orange-500/50 hover:text-white"
+                    ? "bg-white text-black border-white" 
+                    : "bg-transparent text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-white"
                 }`}
             >
                 {cat}
@@ -478,26 +530,30 @@ export default function Home() {
             ))}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {itemsToShow.map((item) => (
-            <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-orange-500/30 transition-all group hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-900/10">
-                <div className="h-56 bg-zinc-800 flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent z-10"/>
-                    <span className="text-9xl font-black text-zinc-800 group-hover:text-zinc-700 transition-colors duration-500 z-0 select-none transform group-hover:scale-110">
-                        {item.title.charAt(0)}
-                    </span>
-                </div>
-                <div className="p-6 relative -mt-12 z-20">
-                    <div className="flex justify-between items-start mb-2">
-                         <h3 className="text-xl font-bold text-white leading-tight">{item.title}</h3>
-                         <span className="bg-orange-500 text-black text-xs font-bold px-2 py-1 rounded ml-2">S/ {item.price.toFixed(2)}</span>
+            <div key={item.id} className="group cursor-pointer">
+                {/* IMAGEN */}
+                <div className="h-64 bg-zinc-900 relative overflow-hidden mb-6 filter grayscale group-hover:grayscale-0 transition-all duration-700">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"/>
+                    <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                        <span className="text-9xl font-black text-zinc-700 select-none opacity-50">{item.title.charAt(0)}</span>
                     </div>
-                    <p className="text-gray-500 text-sm mb-6 line-clamp-2">{item.desc}</p>
+                </div>
+
+                {/* INFO */}
+                <div className="relative px-2">
+                    <div className="flex justify-between items-baseline mb-3">
+                         <h3 className="text-xl font-bold text-white uppercase tracking-wider group-hover:text-amber-500 transition-colors">{item.title}</h3>
+                         <span className="text-amber-500 font-mono text-lg">S/ {item.price.toFixed(2)}</span>
+                    </div>
+                    <p className="text-zinc-500 text-sm mb-6 leading-relaxed min-h-[40px]">{item.desc}</p>
+                    
                     <button 
                         onClick={() => addToCart(item)} 
-                        className="w-full bg-white text-black hover:bg-orange-500 hover:text-black py-3 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-all text-sm uppercase tracking-wide"
+                        className="w-full border border-zinc-800 hover:bg-white hover:text-black hover:border-white text-white py-4 font-bold flex items-center justify-center gap-3 transition-all text-xs uppercase tracking-[0.2em]"
                     >
-                        <Plus size={18} /> Agregar
+                        <Plus size={16} /> Agregar
                     </button>
                 </div>
             </div>
@@ -505,12 +561,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4. RESERVAS */}
       <InternalReservation />
 
-      {/* FOOTER */}
-      <footer className="py-8 text-center border-t border-zinc-900 bg-black text-zinc-600 text-xs uppercase tracking-widest">
-        © 2025 GastroLab. Todos los derechos reservados.
+      <footer className="py-12 text-center border-t border-zinc-900 bg-black text-zinc-700 text-[10px] uppercase tracking-[0.3em]">
+        © 2025 GastroLab. All Rights Reserved.
       </footer>
       
       <InternalCartSidebar 
