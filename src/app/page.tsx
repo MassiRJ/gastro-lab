@@ -11,7 +11,7 @@ import Testimonials from "./components/Testimonials";
 import Features from "./components/Features";
 import Toast from "./components/Toast";
 
-// --- DATOS DUROS ---
+// --- DATOS DEL MENÚ (INTEGRADOS AQUÍ MISMO) ---
 const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
@@ -35,30 +35,38 @@ export default function Home() {
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  
+  // ESTADO DEL MENÚ (INTEGRADO)
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // LOGICA MANUAL (SIN FILTER)
+  // SELECCIÓN MANUAL DE LISTA (SIN FILTER)
   let itemsToShow = [];
-  if (activeCategory === "Entradas") itemsToShow = ENTRADAS;
-  else if (activeCategory === "Fondos") itemsToShow = FONDOS;
-  else itemsToShow = BEBIDAS;
+  if (activeCategory === "Entradas") {
+    itemsToShow = ENTRADAS;
+  } else if (activeCategory === "Fondos") {
+    itemsToShow = FONDOS;
+  } else {
+    itemsToShow = BEBIDAS;
+  }
 
+  // AGREGAR AL CARRITO
   const addToCart = (item) => {
     setCart((prev) => {
+        // Protección extra contra undefined
         const current = prev || [];
         return [...current, { ...item, cartId: Math.random() }];
     });
     setToastMessage(`¡${item.title} agregado!`);
   };
 
-  // ⚠️ AQUÍ ESTABA EL ERROR. AHORA USAMOS SPLICE.
+  // QUITAR DEL CARRITO (USANDO SPLICE, NO FILTER)
   const removeFromCart = (cartId) => {
     setCart((prev) => {
       if (!prev) return [];
-      const newCart = [...prev]; // Copia del array
+      const newCart = [...prev];
       const index = newCart.findIndex(item => item.cartId === cartId);
       if (index > -1) {
-        newCart.splice(index, 1); // Cortamos el elemento sin usar filter
+        newCart.splice(index, 1); // Borramos manualmente
       }
       return newCart;
     });
@@ -74,14 +82,14 @@ export default function Home() {
       <Hero />
       <Features />
       
-      {/* MENÚ INTEGRADO */}
+      {/* --- SECCIÓN MENÚ (INTEGRADA) --- */}
       <section id="menu" className="py-20 px-4 max-w-7xl mx-auto min-h-screen">
         <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-emerald-400">Nuestra Carta</h2>
             <p className="text-gray-400">Selecciona una categoría</p>
         </div>
         
-        {/* TABS */}
+        {/* BOTONES CATEGORÍAS */}
         <div className="flex justify-center gap-4 mb-12 flex-wrap">
             {["Entradas", "Fondos", "Bebidas"].map((cat) => (
             <button
@@ -113,6 +121,8 @@ export default function Home() {
                 </div>
                 <div className="p-6 relative">
                 <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
+                <p className="text-gray-500 text-sm mb-6 line-clamp-2">Especialidad de la casa.</p>
+                
                 <button 
                     onClick={() => addToCart(item)}
                     className="w-full bg-white text-black hover:bg-emerald-500 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -124,6 +134,7 @@ export default function Home() {
             ))}
         </div>
       </section>
+      {/* --- FIN SECCIÓN MENÚ --- */}
 
       <Testimonials />
       <Reservation />
