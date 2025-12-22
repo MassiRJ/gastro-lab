@@ -4,7 +4,8 @@ import { useState } from "react";
 import { 
   ShoppingCart, Plus, Menu as MenuIcon, X, 
   Trash2, Send, MapPin, Banknote, Smartphone,
-  Calendar, Users, Clock, ChefHat, Star, ChevronDown, Phone
+  Calendar, Users, Clock, ChefHat, Star, ChevronDown, Phone,
+  ShieldCheck, AlertCircle
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -178,15 +179,15 @@ function InternalAbout() {
   );
 }
 
-// --- RESERVAS CONECTADAS A SUPABASE (CORREGIDO) ---
+// --- RESERVAS CON GARANTÍA ---
 function InternalReservation() {
-  // Estado ajustado a tu tabla: name, phone, date, time, people
   const [formData, setFormData] = useState({ 
     name: "", 
     phone: "", 
     date: "", 
     time: "", 
-    people: "2" 
+    people: "2",
+    paymentMethod: "yape" // Nuevo campo para el método de garantía
   });
   const [loading, setLoading] = useState(false);
 
@@ -196,25 +197,32 @@ function InternalReservation() {
 
     try {
         // ENVIAR A SUPABASE (Tabla: reservations)
-        // Mapeamos los campos EXACTOS de tu base de datos
         const { error } = await supabase.from('reservations').insert([
             {
                 name: formData.name,
                 phone: formData.phone,
                 date: formData.date,
                 time: formData.time,
-                people: formData.people, // Campo correcto según tu tabla
-                status: 'pendiente',
+                people: formData.people,
+                status: 'pendiente de pago', // Marcamos que falta pagar
                 payment_status: 'pending',
-                paid_amount: 0
+                payment_method: formData.paymentMethod,
+                paid_amount: 50 // Guardamos que debe 50 soles
             }
         ]);
 
         if (error) throw error;
 
-        alert(`✅ ¡Reserva Solicitada con Éxito!\nTe esperamos el ${formData.date} a las ${formData.time}`);
-        // Limpiar formulario
-        setFormData({ name: "", phone: "", date: "", time: "", people: "2" });
+        // MENSAJE CON INSTRUCCIONES DE PAGO
+        alert(
+          `🔒 ¡Pre-Reserva Exitosa!\n\n` +
+          `Para confirmar tu mesa, por favor realiza el abono de garantía (S/ 50.00).\n\n` +
+          `📲 Método: ${formData.paymentMethod.toUpperCase()}\n` +
+          `📞 Número: 999-999-999 (GastroLab)\n\n` +
+          `Envíanos la captura por WhatsApp para finalizar.`
+        );
+        
+        setFormData({ name: "", phone: "", date: "", time: "", people: "2", paymentMethod: "yape" });
 
     } catch (error) {
         console.error(error);
@@ -232,7 +240,20 @@ function InternalReservation() {
              <h2 className="text-4xl md:text-5xl font-black text-white">Reserva tu Mesa</h2>
          </div>
 
-         <div className="bg-zinc-900/50 border border-zinc-800 p-8 md:p-12 shadow-2xl backdrop-blur-sm">
+         <div className="bg-zinc-900/50 border border-zinc-800 p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
+           
+           {/* AVISO DE GARANTÍA */}
+           <div className="mb-10 bg-amber-500/10 border border-amber-500/20 p-6 rounded-xl flex gap-4 items-start">
+              <ShieldCheck className="text-amber-500 shrink-0 mt-1" size={24}/>
+              <div>
+                <h4 className="text-amber-500 font-bold text-sm uppercase tracking-wider mb-1">Garantía de Reserva</h4>
+                <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
+                  Para asegurar tu asistencia y brindarte el mejor servicio, solicitamos una garantía de 
+                  <span className="text-white font-bold"> S/ 50.00</span>. Este monto se descontará de tu consumo final.
+                </p>
+              </div>
+           </div>
+
            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
              
              {/* Nombre */}
@@ -248,9 +269,9 @@ function InternalReservation() {
                />
              </div>
 
-             {/* Teléfono (NUEVO) */}
+             {/* Teléfono */}
              <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / Celular</label>
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / WhatsApp</label>
                <div className="relative">
                  <Phone className="absolute left-4 top-4 text-zinc-500" size={20}/>
                  <input 
@@ -264,7 +285,7 @@ function InternalReservation() {
                </div>
              </div>
 
-             {/* Personas (People) */}
+             {/* Personas */}
              <div className="space-y-3">
                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">N° Comensales</label>
                <div className="relative">
@@ -296,7 +317,7 @@ function InternalReservation() {
              </div>
 
              {/* Hora */}
-             <div className="space-y-3 md:col-span-2">
+             <div className="space-y-3">
                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Hora</label>
                <div className="relative">
                  <Clock className="absolute left-4 top-4 text-zinc-500" size={20}/>
@@ -310,11 +331,31 @@ function InternalReservation() {
                </div>
              </div>
 
+             {/* Método de Garantía */}
+             <div className="space-y-3">
+               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Método de Garantía</label>
+               <div className="relative">
+                 <Banknote className="absolute left-4 top-4 text-zinc-500" size={20}/>
+                 <select 
+                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none cursor-pointer"
+                   value={formData.paymentMethod}
+                   onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                 >
+                   <option value="yape">Yape / Plin</option>
+                   <option value="transferencia">Transferencia BCP</option>
+                   <option value="transferencia_interbank">Transferencia Interbank</option>
+                 </select>
+               </div>
+             </div>
+
              {/* Botón Submit */}
              <div className="md:col-span-2 mt-6">
                <button disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-5 text-sm tracking-widest uppercase transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-50">
-                 {loading ? "ENVIANDO..." : "CONFIRMAR RESERVA"}
+                 {loading ? "PROCESANDO..." : "SOLICITAR RESERVA (S/ 50.00)"}
                </button>
+               <p className="text-center text-zinc-500 text-[10px] mt-4 uppercase tracking-widest">
+                 Se enviarán las instrucciones de pago a tu WhatsApp
+               </p>
              </div>
            </form>
          </div>
@@ -330,7 +371,6 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
   const [payment, setPayment] = useState("efectivo");
   const [loading, setLoading] = useState(false);
 
-  // Generamos mesas del 1 al 15
   const mesas = Array.from({length: 15}, (_, i) => i + 1);
 
   const handleSend = async () => {
@@ -341,7 +381,6 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
       
       setLoading(true);
       try {
-        // ENVIAR A SUPABASE (Tabla: orders)
         const { error } = await supabase.from('orders').insert([
             {
               table_number: table,
