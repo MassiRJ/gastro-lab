@@ -2,7 +2,7 @@
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-// LISTAS SEPARADAS (CERO RIESGO DE ERROR)
+// --- LISTAS MANUALES (CERO RIESGO DE ERROR) ---
 const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
@@ -28,7 +28,8 @@ export default function FoodMenu({ onAddToCart }) {
   const categories = ["Entradas", "Fondos", "Bebidas"];
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // SELECCIÓN MANUAL SIN .FILTER()
+  // SELECCIÓN MANUAL: "Si es A usa lista A, si es B usa lista B..."
+  // Esto reemplaza al .filter() y es a prueba de balas.
   let itemsToShow = [];
   if (activeCategory === "Entradas") {
     itemsToShow = ENTRADAS;
@@ -45,6 +46,7 @@ export default function FoodMenu({ onAddToCart }) {
         <p className="text-gray-400">Selecciona una categoría</p>
       </div>
       
+      {/* TABS DE CATEGORÍAS */}
       <div className="flex justify-center gap-4 mb-12 flex-wrap">
         {categories.map((cat) => (
           <button
@@ -61,7 +63,8 @@ export default function FoodMenu({ onAddToCart }) {
         ))}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* GRILLA DE PLATOS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in zoom-in duration-300">
         {itemsToShow.map((item) => (
           <div key={item.id} className="bg-zinc-900/50 border border-white/5 rounded-2xl overflow-hidden hover:border-emerald-500/30 transition-all group hover:shadow-2xl hover:shadow-emerald-900/10">
             <div className="h-48 bg-zinc-800 relative overflow-hidden flex items-center justify-center">
@@ -76,7 +79,7 @@ export default function FoodMenu({ onAddToCart }) {
             
             <div className="p-6 relative">
               <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
-              <p className="text-gray-500 text-sm mb-6 line-clamp-2">Plato especial de la casa.</p>
+              <p className="text-gray-500 text-sm mb-6 line-clamp-2">Especialidad de la casa.</p>
               
               <button 
                 onClick={() => onAddToCart(item)}
