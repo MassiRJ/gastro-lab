@@ -12,7 +12,6 @@ import { supabase } from "../lib/supabaseClient";
 // ==========================================
 // 1. DATOS DE RESPALDO (FALLBACK)
 // ==========================================
-// Necesarios por si la base de datos tarda en responder o está vacía
 const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00, desc: "Pesca del día, leche de tigre y camote glaseado." },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00, desc: "Papa amarilla prensada, pollo deshilachado y palta fuerte." },
@@ -78,10 +77,21 @@ function InternalNavbar({ cartCount, onOpenCart }) {
 function InternalHero() {
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
+      {/* FONDO DE VIDEO */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-black z-10" />
-        <img src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1920&auto=format&fit=crop" alt="Fondo Gourmet" className="w-full h-full object-cover opacity-50"/>
+        <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover opacity-50"
+        >
+            <source src="/video.mp4" type="video/mp4" />
+            Tu navegador no soporta videos HTML5.
+        </video>
       </div>
+
       <div className="relative z-20 text-center px-4 max-w-5xl mx-auto mt-20">
         <div className="inline-block border border-amber-500/50 px-6 py-2 rounded-full mb-8 backdrop-blur-sm">
             <span className="text-amber-400 text-xs font-bold tracking-[0.2em] uppercase">Alta Cocina &bull; Lima 2025</span>
