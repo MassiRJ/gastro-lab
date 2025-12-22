@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   ShoppingCart, Plus, Menu as MenuIcon, X, 
   Trash2, Clock, Wifi, Award, Send, 
   MapPin, User, CreditCard 
 } from "lucide-react";
+import { supabase } from "../lib/supabaseClient"; // IMPORTANTE: Conectamos la BD
 
 // ==========================================
 // 1. DATOS (HARDCODED)
@@ -30,7 +31,7 @@ const BEBIDAS = [
 ];
 
 // ==========================================
-// 2. COMPONENTES INTERNOS (Para evitar imports)
+// 2. COMPONENTES INTERNOS
 // ==========================================
 
 function InternalNavbar({ cartCount, onOpenCart }) {
@@ -106,14 +107,43 @@ function InternalFeatures() {
 function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClearCart }) {
   const total = cartItems ? cartItems.reduce((sum, item) => sum + item.price, 0) : 0;
   
-  // FORMULARIO LOCAL
+  // ESTADOS DEL FORMULARIO
   const [table, setTable] = useState("");
   const [name, setName] = useState("");
+  const [payment, setPayment] = useState("efectivo");
+  const [loading, setLoading] = useState(false);
 
-  const handleSend = () => {
-      alert("✅ Pedido enviado (Simulación)");
-      onClearCart();
-      onClose();
+  // --- LÓGICA REAL DE ENVÍO A SUPABASE ---
+  const handleSend = async () => {
+      if(!table || !name) { alert("⚠️ Faltan datos (Mesa o Nombre)"); return; }
+      
+      setLoading(true);
+      try {
+        const { error } = await supabase.from('orders').insert([
+            {
+              table_number: table,
+              waiter_name: name, // Usamos este campo para el cliente web
+              items: cartItems,
+              total_price: total,
+              status: 'pendiente',
+              created_at: new Date(),
+              payment_method: payment,
+              payment_status: 'pending'
+            }
+        ]);
+
+        if (error) throw error;
+
+        alert("✅ ¡Pedido Enviado! Pronto estará en tu mesa.");
+        onClearCart();
+        onClose();
+        setTable("");
+        setName("");
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        setLoading(false);
+      }
   };
 
   return (
@@ -122,6 +152,7 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
       <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 z-[70] transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-6 h-full flex flex-col">
           <div className="flex justify-between items-center mb-8"><h2 className="text-2xl font-bold">Tu Pedido</h2><button onClick={onClose}><X/></button></div>
+          
           <div className="flex-1 overflow-y-auto space-y-4">
             {!cartItems || cartItems.length === 0 ? <p className="text-center text-gray-500">Vacío</p> : 
               cartItems.map((item) => (
@@ -132,15 +163,34 @@ function InternalCartSidebar({ isOpen, onClose, cartItems, onRemoveItem, onClear
               ))
             }
           </div>
+
           {cartItems && cartItems.length > 0 && (
-              <div className="bg-black/50 p-4 rounded mb-4 space-y-2">
-                  <input placeholder="Mesa" className="w-full bg-zinc-800 p-2 rounded" value={table} onChange={e=>setTable(e.target.value)}/>
-                  <input placeholder="Nombre" className="w-full bg-zinc-800 p-2 rounded" value={name} onChange={e=>setName(e.target.value)}/>
+              <div className="bg-black/50 p-4 rounded mb-4 space-y-3 border border-white/10">
+                  <div className="flex gap-2">
+                     <div className="relative flex-1">
+                        <MapPin className="absolute left-3 top-3 text-zinc-500" size={16}/>
+                        <input placeholder="Mesa" className="w-full bg-zinc-800 p-2 pl-9 rounded text-white" value={table} onChange={e=>setTable(e.target.value)} type="number"/>
+                     </div>
+                     <div className="relative flex-1">
+                        <User className="absolute left-3 top-3 text-zinc-500" size={16}/>
+                        <input placeholder="Nombre" className="w-full bg-zinc-800 p-2 pl-9 rounded text-white" value={name} onChange={e=>setName(e.target.value)}/>
+                     </div>
+                  </div>
+                  <div className="relative">
+                      <CreditCard className="absolute left-3 top-3 text-zinc-500" size={16}/>
+                      <select className="w-full bg-zinc-800 p-2 pl-9 rounded text-white appearance-none" value={payment} onChange={e=>setPayment(e.target.value)}>
+                          <option value="efectivo">💵 Efectivo</option>
+                          <option value="yape">📱 Yape / Plin</option>
+                      </select>
+                  </div>
               </div>
           )}
+
           <div className="border-t border-white/10 pt-6">
             <div className="flex justify-between text-xl font-bold mb-6"><span>Total</span><span className="text-emerald-400">S/ {total.toFixed(2)}</span></div>
-            <button onClick={handleSend} className="w-full bg-emerald-600 py-4 rounded-xl font-bold">Confirmar</button>
+            <button onClick={handleSend} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-xl font-bold flex justify-center gap-2 items-center disabled:opacity-50">
+                {loading ? "Enviando..." : <>Confirmar Pedido <Send size={18}/></>}
+            </button>
           </div>
         </div>
       </div>
@@ -153,7 +203,7 @@ function InternalFooter() {
 }
 
 // ==========================================
-// 3. PÁGINA PRINCIPAL (MONOLITO)
+// 3. PÁGINA PRINCIPAL
 // ==========================================
 
 export default function Home() {
@@ -178,7 +228,6 @@ export default function Home() {
     setCart((prev) => {
       if (!prev) return [];
       const newCart = [...prev];
-      // USAMOS SPLICE, NO FILTER
       const index = newCart.findIndex(item => item.cartId === cartId);
       if (index > -1) newCart.splice(index, 1);
       return newCart;
@@ -201,7 +250,7 @@ export default function Home() {
         
         <div className="flex justify-center gap-4 mb-12 flex-wrap">
             {["Entradas", "Fondos", "Bebidas"].map((cat) => (
-            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-8 py-3 rounded-full font-bold ${activeCategory === cat ? "bg-emerald-600" : "bg-zinc-900 border border-zinc-800"}`}>
+            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-8 py-3 rounded-full font-bold ${activeCategory === cat ? "bg-emerald-600 shadow-lg shadow-emerald-900/50" : "bg-zinc-900 border border-zinc-800"}`}>
                 {cat}
             </button>
             ))}
@@ -209,14 +258,15 @@ export default function Home() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {itemsToShow.map((item) => (
-            <div key={item.id} className="bg-zinc-900/50 border border-white/5 rounded-2xl overflow-hidden hover:border-emerald-500/30 transition-all">
-                <div className="h-48 bg-zinc-800 flex items-center justify-center relative">
-                    <span className="text-6xl font-black text-zinc-700">{item.title.charAt(0)}</span>
-                    <span className="absolute bottom-4 right-4 bg-black/60 px-3 py-1 rounded text-emerald-400 font-bold">S/ {item.price.toFixed(2)}</span>
+            <div key={item.id} className="bg-zinc-900/50 border border-white/5 rounded-2xl overflow-hidden hover:border-emerald-500/30 transition-all group">
+                <div className="h-48 bg-zinc-800 flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10"/>
+                    <span className="text-6xl font-black text-zinc-700 z-0">{item.title.charAt(0)}</span>
+                    <span className="absolute bottom-4 right-4 bg-black/60 px-3 py-1 rounded text-emerald-400 font-bold z-20 border border-emerald-500/30">S/ {item.price.toFixed(2)}</span>
                 </div>
                 <div className="p-6">
                     <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                    <button onClick={() => addToCart(item)} className="w-full bg-white text-black hover:bg-emerald-500 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                    <button onClick={() => addToCart(item)} className="w-full bg-white text-black hover:bg-emerald-500 hover:text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all">
                         <Plus size={18} /> Agregar
                     </button>
                 </div>
