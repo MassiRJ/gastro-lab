@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Menu as MenuIcon, X, 
   Trash2, Send, MapPin, Banknote, Smartphone,
   Calendar, Users, Clock, ChefHat, Star, ChevronDown, Phone,
-  CreditCard, ShieldCheck, Copy, QrCode, Loader2
+  CreditCard, ShieldCheck, Copy, QrCode, Loader2, ArrowRight
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -31,46 +31,96 @@ const BEBIDAS = [
 
 function InternalNavbar({ cartCount, onOpenCart }) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Bloquear scroll cuando el menú móvil está abierto
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+  }, [isOpen]);
+
   return (
-    <nav className="fixed w-full z-50 bg-black/90 backdrop-blur-md border-b border-white/10 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-24">
-          <div className="flex-shrink-0 font-bold text-2xl tracking-widest text-white cursor-pointer uppercase">
-            GASTRO<span className="text-amber-500">.</span>LAB
-          </div>
-          <div className="hidden md:flex items-center space-x-10 text-xs font-bold tracking-widest text-gray-400">
-            <a href="#" className="hover:text-amber-500 transition-colors">INICIO</a>
-            <a href="#nosotros" className="hover:text-amber-500 transition-colors">NOSOTROS</a>
-            <a href="#menu" className="hover:text-amber-500 transition-colors">MENÚ</a>
-            <a href="#reservas" className="hover:text-amber-500 transition-colors">RESERVAS</a>
-          </div>
-          <div className="hidden md:flex items-center gap-6">
-             <button onClick={onOpenCart} className="relative p-2 text-white hover:text-amber-500 transition-colors">
-                <ShoppingCart size={22} />
-                {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
-             </button>
-             <button className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-none border border-white font-bold text-xs tracking-widest transition-all">
-                PEDIR ONLINE
-             </button>
-          </div>
-          <div className="flex md:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className="text-white p-2">
-              {isOpen ? <X size={24} /> : <MenuIcon size={24} />}
-            </button>
+    <>
+      <nav className="fixed w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-24">
+            
+            {/* LOGO */}
+            <div className="flex-shrink-0 font-bold text-2xl tracking-widest text-white cursor-pointer uppercase z-50">
+              GASTRO<span className="text-amber-500">.</span>LAB
+            </div>
+
+            {/* MENÚ DE ESCRITORIO (Visible solo en PC) */}
+            <div className="hidden md:flex items-center space-x-10 text-xs font-bold tracking-widest text-gray-400">
+              <a href="#" className="hover:text-amber-500 transition-colors">INICIO</a>
+              <a href="#nosotros" className="hover:text-amber-500 transition-colors">NOSOTROS</a>
+              <a href="#menu" className="hover:text-amber-500 transition-colors">MENÚ</a>
+              <a href="#reservas" className="hover:text-amber-500 transition-colors">RESERVAS</a>
+            </div>
+
+            {/* BOTONES DERECHA (Carrito y CTA) */}
+            <div className="hidden md:flex items-center gap-6">
+               <button onClick={onOpenCart} className="relative p-2 text-white hover:text-amber-500 transition-colors group">
+                  <ShoppingCart size={22} className="group-hover:scale-110 transition-transform"/>
+                  {cartCount > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-black text-[10px] font-bold flex items-center justify-center rounded-full animate-bounce">{cartCount}</span>}
+               </button>
+               <button className="bg-white hover:bg-gray-200 text-black px-6 py-3 rounded-none border border-white font-bold text-xs tracking-widest transition-all hover:scale-105">
+                  PEDIR ONLINE
+               </button>
+            </div>
+
+            {/* BOTÓN HAMBURGUESA (MÓVIL) */}
+            <div className="flex md:hidden z-50">
+              <button onClick={() => setIsOpen(!isOpen)} className="text-white p-2 focus:outline-none">
+                {isOpen ? <X size={32} className="text-amber-500"/> : <MenuIcon size={32}/>}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
+
+      {/* --- MENÚ MÓVIL FULL SCREEN (DISEÑO MEJORADO) --- */}
       {isOpen && (
-        <div className="md:hidden bg-zinc-950 px-6 pt-4 pb-8 space-y-4 border-b border-zinc-800 absolute w-full h-screen z-50">
-           <a href="#nosotros" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">NOSOTROS</a>
-           <a href="#menu" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">MENÚ</a>
-           <a href="#reservas" onClick={() => setIsOpen(false)} className="block text-2xl font-bold text-white hover:text-amber-500">RESERVAS</a>
-           <button onClick={() => { setIsOpen(false); onOpenCart(); }} className="w-full text-left text-amber-500 font-bold block py-4 text-xl">
-             VER CARRITO ({cartCount})
-           </button>
+        <div className="fixed inset-0 z-[45] bg-black/95 backdrop-blur-xl flex flex-col justify-center items-center md:hidden animate-in slide-in-from-top-10 fade-in duration-300">
+           
+           {/* Enlaces de Navegación */}
+           <div className="flex flex-col gap-8 text-center mb-12">
+             {['INICIO', 'NOSOTROS', 'MENÚ', 'RESERVAS'].map((item) => (
+               <a 
+                 key={item}
+                 href={`#${item === 'INICIO' ? '' : item.toLowerCase()}`}
+                 onClick={() => setIsOpen(false)}
+                 className="text-3xl font-light text-white tracking-[0.2em] hover:text-amber-500 transition-all hover:scale-110 active:scale-95"
+               >
+                 {item}
+               </a>
+             ))}
+           </div>
+
+           {/* Línea divisoria decorativa */}
+           <div className="w-16 h-[1px] bg-zinc-800 mb-10"></div>
+
+           {/* Acciones Móviles */}
+           <div className="flex flex-col gap-6 w-full max-w-xs px-6">
+             <button 
+                onClick={() => { setIsOpen(false); onOpenCart(); }} 
+                className="w-full bg-zinc-900 border border-zinc-800 text-white py-4 rounded-xl flex items-center justify-center gap-3 text-sm font-bold tracking-widest hover:border-amber-500 transition-all"
+             >
+                <ShoppingCart size={18} className="text-amber-500"/>
+                VER CARRITO ({cartCount})
+             </button>
+             
+             <button className="w-full bg-amber-500 text-black py-4 rounded-xl flex items-center justify-center gap-3 text-sm font-bold tracking-widest shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                PEDIR AHORA <ArrowRight size={18}/>
+             </button>
+           </div>
+
+           {/* Footer del menú */}
+           <div className="absolute bottom-10 text-zinc-600 text-[10px] tracking-[0.3em] uppercase">
+              © 2025 GastroLab Mobile
+           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 }
 
@@ -93,18 +143,18 @@ function InternalHero() {
       </div>
 
       <div className="relative z-20 text-center px-4 max-w-5xl mx-auto mt-20">
-        <div className="inline-block border border-amber-500/50 px-6 py-2 rounded-full mb-8 backdrop-blur-sm">
+        <div className="inline-block border border-amber-500/50 px-6 py-2 rounded-full mb-8 backdrop-blur-sm animate-in fade-in zoom-in duration-1000">
             <span className="text-amber-400 text-xs font-bold tracking-[0.2em] uppercase">Alta Cocina &bull; Lima 2025</span>
         </div>
-        <h1 className="text-6xl md:text-9xl font-black mb-8 tracking-tighter text-white leading-none">
+        <h1 className="text-6xl md:text-9xl font-black mb-8 tracking-tighter text-white leading-none animate-in slide-in-from-bottom-10 duration-1000">
           SABOR <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-600">PURO</span>
         </h1>
-        <p className="text-lg md:text-xl text-gray-300 mb-12 font-light max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg md:text-xl text-gray-300 mb-12 font-light max-w-2xl mx-auto leading-relaxed animate-in slide-in-from-bottom-10 duration-1000 delay-200">
           Fusionamos la tradición culinaria con la innovación digital.<br className="hidden md:block"/>
           Una experiencia que despierta todos tus sentidos.
         </p>
-        <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
-            <a href="#reservas" className="bg-amber-500 hover:bg-amber-400 text-black px-10 py-4 font-bold text-sm tracking-widest transition-all w-full md:w-auto hover:scale-105">
+        <div className="flex flex-col md:flex-row gap-6 justify-center items-center animate-in slide-in-from-bottom-10 duration-1000 delay-300">
+            <a href="#reservas" className="bg-amber-500 hover:bg-amber-400 text-black px-10 py-4 font-bold text-sm tracking-widest transition-all w-full md:w-auto hover:scale-105 shadow-lg shadow-amber-500/20">
                 RESERVAR MESA
             </a>
             <a href="#menu" className="bg-transparent border border-white/30 hover:border-white text-white px-10 py-4 font-bold text-sm tracking-widest transition-all w-full md:w-auto hover:bg-white/5">
