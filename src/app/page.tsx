@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react"; // Importamos icono para el menú interno
+import { Plus } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Reservation from "./components/Reservation";
@@ -11,7 +11,7 @@ import Testimonials from "./components/Testimonials";
 import Features from "./components/Features";
 import Toast from "./components/Toast";
 
-// --- DATOS DEL MENÚ (AQUÍ MISMO, SIN IMPORTAR NADA) ---
+// --- DATOS DUROS ---
 const ENTRADAS = [
   { id: 1, category: "Entradas", title: "Ceviche Clásico", price: 35.00 },
   { id: 2, category: "Entradas", title: "Causa Limeña", price: 20.00 },
@@ -32,37 +32,35 @@ const BEBIDAS = [
 ];
 
 export default function Home() {
-  // ESTADOS
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
-  
-  // ESTADO DEL MENÚ INTERNO
   const [activeCategory, setActiveCategory] = useState("Entradas");
 
-  // LOGICA MENÚ MANUAL (SIN FILTER)
+  // LOGICA MANUAL (SIN FILTER)
   let itemsToShow = [];
   if (activeCategory === "Entradas") itemsToShow = ENTRADAS;
   else if (activeCategory === "Fondos") itemsToShow = FONDOS;
   else itemsToShow = BEBIDAS;
 
-  // LOGICA CARRITO
   const addToCart = (item) => {
     setCart((prev) => {
-        // Aseguramos que prev siempre sea un array
         const current = prev || [];
         return [...current, { ...item, cartId: Math.random() }];
     });
     setToastMessage(`¡${item.title} agregado!`);
   };
 
+  // ⚠️ AQUÍ ESTABA EL ERROR. AHORA USAMOS SPLICE.
   const removeFromCart = (cartId) => {
     setCart((prev) => {
       if (!prev) return [];
-      // Usamos filter aquí porque cart SIEMPRE se inicializa como [], 
-      // pero por si acaso, si falla, cámbialo a splice manual.
-      // Si esto falla, es brujería.
-      return prev.filter(item => item.cartId !== cartId);
+      const newCart = [...prev]; // Copia del array
+      const index = newCart.findIndex(item => item.cartId === cartId);
+      if (index > -1) {
+        newCart.splice(index, 1); // Cortamos el elemento sin usar filter
+      }
+      return newCart;
     });
   };
 
@@ -76,7 +74,7 @@ export default function Home() {
       <Hero />
       <Features />
       
-      {/* --- SECCIÓN MENÚ INTEGRADA (BUNKER) --- */}
+      {/* MENÚ INTEGRADO */}
       <section id="menu" className="py-20 px-4 max-w-7xl mx-auto min-h-screen">
         <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 text-emerald-400">Nuestra Carta</h2>
@@ -126,7 +124,6 @@ export default function Home() {
             ))}
         </div>
       </section>
-      {/* --- FIN MENÚ INTEGRADO --- */}
 
       <Testimonials />
       <Reservation />
