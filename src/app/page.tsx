@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Menu as MenuIcon, X, 
   Trash2, Send, MapPin, Banknote, Smartphone,
   Calendar, Users, Clock, ChefHat, Star, ChevronDown, Phone,
-  ShieldCheck, AlertCircle
+  CreditCard, ShieldCheck, Copy, QrCode, Loader2
 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -92,7 +92,6 @@ function InternalNavbar({ cartCount, onOpenCart }) {
 function InternalHero() {
   return (
     <div className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
-      {/* FONDO */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/50 to-black z-10" />
         <img 
@@ -126,7 +125,6 @@ function InternalHero() {
         </div>
       </div>
       
-      {/* Scroll Down Indicator */}
       <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce text-gray-500">
         <ChevronDown size={32}/>
       </div>
@@ -138,8 +136,6 @@ function InternalAbout() {
   return (
     <section id="nosotros" className="py-32 bg-zinc-950 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
-        
-        {/* TEXTO */}
         <div className="order-2 md:order-1">
           <h3 className="text-amber-500 font-bold tracking-widest text-xs uppercase mb-4">Nuestra Filosofía</h3>
           <h2 className="text-4xl md:text-5xl font-black text-white mb-8 leading-tight">
@@ -150,7 +146,6 @@ function InternalAbout() {
             Utilizamos ingredientes locales de primera calidad y aplicamos técnicas modernas 
             para resaltar los sabores auténticos de nuestra tierra.
           </p>
-          
           <div className="grid grid-cols-2 gap-10 border-t border-zinc-900 pt-10 mt-10">
             <div>
               <div className="flex items-center gap-3 mb-3 text-white font-bold"><ChefHat className="text-amber-500"/> Maestría</div>
@@ -162,8 +157,6 @@ function InternalAbout() {
             </div>
           </div>
         </div>
-
-        {/* IMAGEN */}
         <div className="order-1 md:order-2 relative">
            <div className="absolute -inset-4 bg-amber-500/10 rounded-none blur-3xl"></div>
            <div className="relative h-[600px] w-full overflow-hidden grayscale hover:grayscale-0 transition-all duration-700">
@@ -179,7 +172,7 @@ function InternalAbout() {
   );
 }
 
-// --- RESERVAS CON GARANTÍA ---
+// --- RESERVAS CON LÓGICA DE PAGO REALISTA ---
 function InternalReservation() {
   const [formData, setFormData] = useState({ 
     name: "", 
@@ -187,16 +180,33 @@ function InternalReservation() {
     date: "", 
     time: "", 
     people: "2",
-    paymentMethod: "yape" // Nuevo campo para el método de garantía
+    paymentMethod: "yape" 
   });
+  
+  // ESTADO PARA TARJETA (Simulado)
+  const [cardData, setCardData] = useState({ number: "", expiry: "", cvc: "", owner: "" });
+  
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // VALIDACIÓN DE TARJETA SIMULADA
+    if (formData.paymentMethod === "tarjeta") {
+        if (!cardData.number || !cardData.expiry || !cardData.cvc || !cardData.owner) {
+            alert("⚠️ Por favor completa los datos de la tarjeta.");
+            return;
+        }
+    }
+
     setLoading(true);
 
     try {
-        // ENVIAR A SUPABASE (Tabla: reservations)
+        // SIMULACIÓN DE PROCESO DE PAGO (2 segundos)
+        if (formData.paymentMethod === "tarjeta") {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
         const { error } = await supabase.from('reservations').insert([
             {
                 name: formData.name,
@@ -204,25 +214,24 @@ function InternalReservation() {
                 date: formData.date,
                 time: formData.time,
                 people: formData.people,
-                status: 'pendiente de pago', // Marcamos que falta pagar
-                payment_status: 'pending',
+                status: formData.paymentMethod === 'tarjeta' ? 'confirmada' : 'pendiente de pago',
+                payment_status: formData.paymentMethod === 'tarjeta' ? 'pagado' : 'pending',
                 payment_method: formData.paymentMethod,
-                paid_amount: 50 // Guardamos que debe 50 soles
+                paid_amount: 50
             }
         ]);
 
         if (error) throw error;
 
-        // MENSAJE CON INSTRUCCIONES DE PAGO
-        alert(
-          `🔒 ¡Pre-Reserva Exitosa!\n\n` +
-          `Para confirmar tu mesa, por favor realiza el abono de garantía (S/ 50.00).\n\n` +
-          `📲 Método: ${formData.paymentMethod.toUpperCase()}\n` +
-          `📞 Número: 999-999-999 (GastroLab)\n\n` +
-          `Envíanos la captura por WhatsApp para finalizar.`
-        );
+        if (formData.paymentMethod === 'tarjeta') {
+            alert(`✅ ¡Pago Exitoso! Tu reserva ha sido CONFIRMADA automáticamente.`);
+        } else {
+            alert(`📩 Solicitud enviada. Por favor envía la captura de tu Yape al WhatsApp para confirmar.`);
+        }
         
+        // Reset
         setFormData({ name: "", phone: "", date: "", time: "", people: "2", paymentMethod: "yape" });
+        setCardData({ number: "", expiry: "", cvc: "", owner: "" });
 
     } catch (error) {
         console.error(error);
@@ -234,130 +243,106 @@ function InternalReservation() {
 
   return (
     <section id="reservas" className="py-32 bg-black relative border-t border-zinc-900">
-       <div className="max-w-5xl mx-auto px-6 relative z-10">
+       <div className="max-w-6xl mx-auto px-6 relative z-10">
          <div className="text-center mb-16">
              <h3 className="text-amber-500 font-bold tracking-widest text-xs uppercase mb-4">Agenda tu Visita</h3>
              <h2 className="text-4xl md:text-5xl font-black text-white">Reserva tu Mesa</h2>
          </div>
 
-         <div className="bg-zinc-900/50 border border-zinc-800 p-8 md:p-12 shadow-2xl backdrop-blur-sm relative overflow-hidden">
-           
-           {/* AVISO DE GARANTÍA */}
-           <div className="mb-10 bg-amber-500/10 border border-amber-500/20 p-6 rounded-xl flex gap-4 items-start">
-              <ShieldCheck className="text-amber-500 shrink-0 mt-1" size={24}/>
-              <div>
-                <h4 className="text-amber-500 font-bold text-sm uppercase tracking-wider mb-1">Garantía de Reserva</h4>
-                <p className="text-gray-400 text-xs md:text-sm leading-relaxed">
-                  Para asegurar tu asistencia y brindarte el mejor servicio, solicitamos una garantía de 
-                  <span className="text-white font-bold"> S/ 50.00</span>. Este monto se descontará de tu consumo final.
-                </p>
-              </div>
-           </div>
-
-           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             
-             {/* Nombre */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Nombre Completo</label>
-               <input 
-                 required
-                 type="text" 
-                 placeholder="Ej. Juan Pérez"
-                 className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none transition-colors"
-                 value={formData.name}
-                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-               />
-             </div>
-
-             {/* Teléfono */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Teléfono / WhatsApp</label>
-               <div className="relative">
-                 <Phone className="absolute left-4 top-4 text-zinc-500" size={20}/>
-                 <input 
-                   required
-                   type="tel" 
-                   placeholder="Ej. 999 999 999"
-                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none transition-colors"
-                   value={formData.phone}
-                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                 />
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* COLUMNA 1: DATOS PERSONALES */}
+            <div className="lg:col-span-2 bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl shadow-xl">
+               <h3 className="text-white font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
+                   <Users className="text-amber-500" size={18}/> Datos de Reserva
+               </h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Nombre Completo</label>
+                   <input required type="text" placeholder="Ej. Juan Pérez" className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none rounded-lg"
+                     value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Celular</label>
+                   <input required type="tel" placeholder="999 999 999" className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none rounded-lg"
+                     value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Fecha</label>
+                   <input required type="date" className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none rounded-lg [&::-webkit-calendar-picker-indicator]:invert"
+                     value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} />
+                 </div>
+                 <div className="space-y-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Hora</label>
+                   <input required type="time" className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none rounded-lg [&::-webkit-calendar-picker-indicator]:invert"
+                     value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} />
+                 </div>
+                 <div className="space-y-2 md:col-span-2">
+                   <label className="text-[10px] font-bold text-zinc-500 uppercase">Personas</label>
+                   <select className="w-full bg-black border border-zinc-800 p-4 text-white focus:border-amber-500 outline-none rounded-lg"
+                     value={formData.people} onChange={(e) => setFormData({...formData, people: e.target.value})}>
+                     {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n} Personas</option>)}
+                     <option value="more">+10 Personas</option>
+                   </select>
+                 </div>
                </div>
-             </div>
+            </div>
 
-             {/* Personas */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">N° Comensales</label>
-               <div className="relative">
-                 <Users className="absolute left-4 top-4 text-zinc-500" size={20}/>
-                 <select 
-                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none cursor-pointer"
-                   value={formData.people}
-                   onChange={(e) => setFormData({...formData, people: e.target.value})}
-                 >
-                   {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n} Personas</option>)}
-                   <option value="more">+10 Personas</option>
-                 </select>
+            {/* COLUMNA 2: PAGO DE GARANTÍA DINÁMICO */}
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-2xl shadow-xl h-fit">
+               <h3 className="text-white font-bold uppercase tracking-widest mb-6 flex items-center gap-2">
+                   <ShieldCheck className="text-amber-500" size={18}/> Garantía: S/ 50.00
+               </h3>
+
+               {/* SELECTOR DE MÉTODO */}
+               <div className="flex gap-2 mb-6">
+                   <button 
+                     onClick={() => setFormData({...formData, paymentMethod: "yape"})}
+                     className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase border transition-all ${formData.paymentMethod === "yape" ? "bg-purple-600 border-purple-600 text-white" : "bg-black border-zinc-800 text-zinc-500 hover:text-white"}`}
+                   >
+                     Yape / Plin
+                   </button>
+                   <button 
+                     onClick={() => setFormData({...formData, paymentMethod: "tarjeta"})}
+                     className={`flex-1 py-3 rounded-lg text-xs font-bold uppercase border transition-all ${formData.paymentMethod === "tarjeta" ? "bg-amber-500 border-amber-500 text-black" : "bg-black border-zinc-800 text-zinc-500 hover:text-white"}`}
+                   >
+                     Tarjeta
+                   </button>
                </div>
-             </div>
 
-             {/* Fecha */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Fecha</label>
-               <div className="relative">
-                 <Calendar className="absolute left-4 top-4 text-zinc-500" size={20}/>
-                 <input 
-                   required
-                   type="date" 
-                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
-                   value={formData.date}
-                   onChange={(e) => setFormData({...formData, date: e.target.value})}
-                 />
-               </div>
-             </div>
-
-             {/* Hora */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Hora</label>
-               <div className="relative">
-                 <Clock className="absolute left-4 top-4 text-zinc-500" size={20}/>
-                 <input 
-                   required
-                   type="time" 
-                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert"
-                   value={formData.time}
-                   onChange={(e) => setFormData({...formData, time: e.target.value})}
-                 />
-               </div>
-             </div>
-
-             {/* Método de Garantía */}
-             <div className="space-y-3">
-               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Método de Garantía</label>
-               <div className="relative">
-                 <Banknote className="absolute left-4 top-4 text-zinc-500" size={20}/>
-                 <select 
-                   className="w-full bg-black border border-zinc-800 p-4 pl-12 text-white focus:border-amber-500 outline-none appearance-none cursor-pointer"
-                   value={formData.paymentMethod}
-                   onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
-                 >
-                   <option value="yape">Yape / Plin</option>
-                   <option value="transferencia">Transferencia BCP</option>
-                   <option value="transferencia_interbank">Transferencia Interbank</option>
-                 </select>
-               </div>
-             </div>
-
-             {/* Botón Submit */}
-             <div className="md:col-span-2 mt-6">
-               <button disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-5 text-sm tracking-widest uppercase transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-50">
-                 {loading ? "PROCESANDO..." : "SOLICITAR RESERVA (S/ 50.00)"}
-               </button>
-               <p className="text-center text-zinc-500 text-[10px] mt-4 uppercase tracking-widest">
-                 Se enviarán las instrucciones de pago a tu WhatsApp
-               </p>
-             </div>
-           </form>
+               {/* CONTENIDO DINÁMICO */}
+               {formData.paymentMethod === "yape" ? (
+                   <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                       <div className="bg-purple-900/20 border border-purple-500/30 p-6 rounded-xl text-center mb-6">
+                           <div className="bg-white w-32 h-32 mx-auto mb-4 rounded-lg flex items-center justify-center">
+                               <QrCode className="text-black" size={80}/>
+                           </div>
+                           <p className="text-purple-300 text-xs uppercase font-bold mb-1">Yapear a nombre de GastroLab</p>
+                           <p className="text-2xl font-black text-white tracking-widest">987 654 321</p>
+                       </div>
+                       <button onClick={handleSubmit} disabled={loading} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl text-sm tracking-widest uppercase transition-all shadow-lg shadow-purple-900/20 disabled:opacity-50">
+                         {loading ? "Procesando..." : "YA HICE EL PAGO"}
+                       </button>
+                   </div>
+               ) : (
+                   <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                       <input type="text" placeholder="Número de Tarjeta" className="w-full bg-black border border-zinc-700 p-3 rounded-lg text-white text-sm outline-none focus:border-amber-500"
+                         value={cardData.number} onChange={e=>setCardData({...cardData, number: e.target.value})} maxLength={19}/>
+                       <div className="flex gap-3">
+                           <input type="text" placeholder="MM/YY" className="w-full bg-black border border-zinc-700 p-3 rounded-lg text-white text-sm outline-none focus:border-amber-500"
+                             value={cardData.expiry} onChange={e=>setCardData({...cardData, expiry: e.target.value})} maxLength={5}/>
+                           <input type="text" placeholder="CVC" className="w-full bg-black border border-zinc-700 p-3 rounded-lg text-white text-sm outline-none focus:border-amber-500"
+                             value={cardData.cvc} onChange={e=>setCardData({...cardData, cvc: e.target.value})} maxLength={3}/>
+                       </div>
+                       <input type="text" placeholder="Nombre del Titular" className="w-full bg-black border border-zinc-700 p-3 rounded-lg text-white text-sm outline-none focus:border-amber-500"
+                         value={cardData.owner} onChange={e=>setCardData({...cardData, owner: e.target.value})}/>
+                       
+                       <button onClick={handleSubmit} disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-black font-bold py-4 rounded-xl text-sm tracking-widest uppercase transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-50 flex justify-center items-center gap-2">
+                         {loading ? <><Loader2 className="animate-spin" size={18}/> PROCESANDO PAGO...</> : "PAGAR S/ 50.00"}
+                       </button>
+                   </div>
+               )}
+            </div>
          </div>
        </div>
     </section>
