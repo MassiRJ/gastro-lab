@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar, User, Eye, Users, Clock, Mail, Phone, CheckCircle } from "lucide-react";
+import { useRouter } from "next/navigation"; // --- NUEVO: Para redirigir
+import { DollarSign, CreditCard, Receipt, Smartphone, Printer, MapPin, FileText, TrendingUp, X, Calendar, User, Eye, Users, Clock, Mail, Phone, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
 export default function CashierView() {
+  const router = useRouter(); // --- NUEVO
+  const [authorized, setAuthorized] = useState(false); // --- NUEVO: Estado de autorización
+
   // Estados Cobro
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null); 
@@ -20,7 +24,22 @@ export default function CashierView() {
   // Estado Detalle
   const [viewDetail, setViewDetail] = useState(null);
 
+  // --- NUEVO: EFECTO DE PROTECCIÓN (EL CANDADO) ---
   useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login"); // Si no hay sesión, manda al login
+      } else {
+        setAuthorized(true); // Si hay sesión, muestra la página
+      }
+    };
+    checkUser();
+  }, []);
+
+  useEffect(() => {
+    if (!authorized) return; // No cargar datos si no está autorizado
+
     fetchPendingPayments();
     const channel = supabase.channel('caja_realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, updateData)
@@ -28,18 +47,26 @@ export default function CashierView() {
       .subscribe();
     const interval = setInterval(fetchPendingPayments, 3000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
-  }, [showReport, selectedDate]);
+  }, [showReport, selectedDate, authorized]); // Agregamos authorized
 
   const updateData = () => {
     fetchPendingPayments();
     if (showReport) fetchDailyReport();
   };
 
-  useEffect(() => { if (showReport) fetchDailyReport(); }, [selectedDate]);
+  useEffect(() => { if (showReport && authorized) fetchDailyReport(); }, [selectedDate, authorized]);
 
-  // --- LOGICA COBRO ---
+  // --- SI NO ESTÁ AUTORIZADO, MUESTRA PANTALLA NEGRA DE CARGA ---
+  if (!authorized) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        <Loader2 className="animate-spin text-amber-500" size={48} />
+      </div>
+    );
+  }
+
+  // --- DESDE AQUÍ ES TU CÓDIGO EXACTO DE ANTES ---
   const fetchPendingPayments = async () => {
-    // 1. Traer Pedidos de Mesas
     const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
@@ -47,14 +74,12 @@ export default function CashierView() {
         .neq('status', 'completado') 
         .order("created_at", { ascending: false });
 
-    // 2. Traer Reservas Pendientes de Pago
     const { data: reservData } = await supabase
         .from("reservations")
         .select("*")
         .eq('payment_status', 'pending') 
         .order("created_at", { ascending: false });
 
-    // 3. Formatear Reservas
     const formattedReservs = (reservData || []).map(r => ({
         id: r.id,
         table_number: "RESERVA WEB", 
@@ -69,7 +94,6 @@ export default function CashierView() {
         ]
     }));
 
-    // 4. Unir todo
     if (ordersData || reservData) {
         setOrders([...(ordersData || []), ...formattedReservs]);
     }
@@ -77,13 +101,11 @@ export default function CashierView() {
 
   const handleCobrar = (order) => setSelectedOrder(order);
 
-  // 🔴 AQUÍ ESTABA EL ERROR: CORREGIDO
   const confirmPaymentAndPrint = async () => {
     if (!selectedOrder) return;
     setLoadingPay(true);
     try {
       if (selectedOrder.type === 'reserva_pendiente') {
-          // --- LOGICA CONFIRMAR RESERVA (Tabla reservations SÍ tiene payment_status) ---
           const { error } = await supabase
             .from('reservations')
             .update({ 
@@ -94,8 +116,6 @@ export default function CashierView() {
           if (error) throw error;
           alert("✅ Garantía confirmada exitosamente");
       } else {
-          // --- LOGICA COBRO MESA (Tabla orders NO tiene payment_status) ---
-          // Solo actualizamos 'status' a 'pagado'
           const { error } = await supabase
             .from('orders')
             .update({ status: 'pagado' }) 
@@ -104,7 +124,6 @@ export default function CashierView() {
       }
       
       setTimeout(() => { 
-          // Solo imprimir voucher si es mesa (ticket físico)
           if(selectedOrder.type !== 'reserva_pendiente') window.print(); 
           setSelectedOrder(null); 
           fetchPendingPayments(); 
@@ -117,7 +136,6 @@ export default function CashierView() {
     }
   };
 
-  // --- LOGICA REPORTE ---
   const fetchDailyReport = async () => {
     const [year, month, day] = selectedDate.split('-').map(Number);
     const startDate = new Date(year, month - 1, day, 0, 0, 0, 0);
@@ -217,7 +235,6 @@ export default function CashierView() {
         )}
       </div>
 
-      {/* --- MODAL VOUCHER / CONFIRMACIÓN --- */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div id="printable-voucher" className="bg-white text-black p-6 rounded-lg w-full max-w-sm shadow-2xl animate-in zoom-in duration-200">
@@ -255,7 +272,6 @@ export default function CashierView() {
         </div>
       )}
 
-      {/* --- MODAL REPORTE --- */}
       {showReport && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-zinc-900 w-full max-w-3xl h-[90vh] rounded-2xl flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 border border-zinc-800 relative">
@@ -324,7 +340,6 @@ export default function CashierView() {
                 <button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2"><Printer size={18}/> Imprimir Reporte</button>
             </div>
 
-            {/* --- SUB-MODAL DETALLE --- */}
             {viewDetail && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-8 animate-in fade-in duration-200 rounded-2xl">
                 <div className="bg-zinc-950 border border-zinc-700 p-6 rounded-xl w-full max-w-sm shadow-2xl relative">
